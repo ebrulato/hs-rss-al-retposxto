@@ -37,6 +37,9 @@ library:
     - JuicyPixels-extra
     - Color
     - base64
+    - smtp-mail
+    - mime-mail
+    - blaze-builder
 
 executables:
   hs-rss-al-retposxto-exe:
@@ -59,6 +62,10 @@ executables:
     - JuicyPixels-extra
     - Color
     - base64
+    - smtp-mail
+    - mime-mail
+    - blaze-builder
+
 
 tests:
   hs-rss-al-retposxto-test:

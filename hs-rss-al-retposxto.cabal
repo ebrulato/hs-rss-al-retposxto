@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8e955e5e316136590005855352635a6c6d283a1aa5351ff010771b6f8359ceef
+-- hash: 4946c8d03d5b1f7d2e723a42d30ba223ff899ec525d02cc1584bc999d2c87da8
 
 name:           hs-rss-al-retposxto
 version:        0.1.0.0
@@ -29,6 +29,7 @@ library
   exposed-modules:
       GrizigiBildon
       MalgrandigiBildon
+      Retposxto
       Simpligi
       Versio
   other-modules:
@@ -41,10 +42,13 @@ library
     , JuicyPixels-extra
     , base >=4.7 && <5
     , base64
+    , blaze-builder
     , bytestring
     , html-parse
     , http-client
     , lens
+    , mime-mail
+    , smtp-mail
     , text
     , url
     , wreq
@@ -63,11 +67,14 @@ executable hs-rss-al-retposxto-exe
     , JuicyPixels-extra
     , base >=4.7 && <5
     , base64
+    , blaze-builder
     , bytestring
     , hs-rss-al-retposxto
     , html-parse
     , http-client
     , lens
+    , mime-mail
+    , smtp-mail
     , text
     , url
     , wreq

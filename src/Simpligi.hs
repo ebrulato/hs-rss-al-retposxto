@@ -246,7 +246,6 @@ simpligiRetpagxon retpagxo porLegilo largxo = do
         Nothing -> return $ Left $ "La retpagxo ne havas gxustan servon : " ++ retpagxo
     
 -- https://hackage.haskell.org/package/feed 
--- https://hackage.haskell.org/package/google-server-api (email)
 
 elsxutiBildon :: String -> Int -> IO (Either String Text)
 elsxutiBildon retBildon largxo = do

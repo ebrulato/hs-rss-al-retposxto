@@ -11,7 +11,6 @@ module GrizigiBildon
 
 import           Codec.Picture
 import           Graphics.Color.Algebra
---import qualified Graphics.Pixel as P
 
 
 grizigi :: DynamicImage -> Image Pixel8

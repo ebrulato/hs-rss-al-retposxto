@@ -11,12 +11,8 @@ module MalgrandigiBildon
 
 import           Codec.Picture               
 import qualified Codec.Picture.Extra    as E  (scaleBilinear)
---import qualified Codec.Picture.Metadata as M
 import           Codec.Picture.Types    as T  (newMutableImage, unsafeFreezeImage, convertImage, dropTransparency, promotePixel) 
---import           Control.Error
 import           Control.Monad.ST             (runST)
---import           Data.Foldable
---import           Data.Semigroup         ((<>))
 
 
 malgrandi :: DynamicImage -> Int -> DynamicImage
@@ -30,8 +26,6 @@ malgrandi bildo novLargxo =
         in resize (nLargxo, nAlto) bildo
       else 
         bildo
-
-
 
 getWidthHeight :: DynamicImage -> (Int, Int)
 getWidthHeight bildon = (dynamicMap imageWidth bildon, dynamicMap imageHeight bildon)

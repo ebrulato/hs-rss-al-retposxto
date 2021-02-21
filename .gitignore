@@ -24,3 +24,4 @@ cabal.project.local~
 *.html
 *.xml
 .DS_Store
+api.key
