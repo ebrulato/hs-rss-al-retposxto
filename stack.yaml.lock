@@ -11,6 +11,13 @@ packages:
       sha256: 9708a304435076c762fe6ec39e5991b70f04a9b6455f8334fb7b4f0dab54551c
   original:
     hackage: html-parse-0.2.0.2@sha256:cafa5a9ca1698bf476a2534a3c1e9a64d128a88c2a4ac51c5e350b8d1f3d1978,3783
+- completed:
+    hackage: purebred-email-0.4.1@sha256:939e248d394701549e85113619755f0be744ab06483feb7257b68951ff03b892,3406
+    pantry-tree:
+      size: 2111
+      sha256: 7f2cc1fecb38aa32e0a4a998cb5e4d61b90d3d95fe40df785afc1b5e9bdf150f
+  original:
+    hackage: purebred-email-0.4.1@sha256:939e248d394701549e85113619755f0be744ab06483feb7257b68951ff03b892,3406
 snapshots:
 - completed:
     size: 563099

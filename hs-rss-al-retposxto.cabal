@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4946c8d03d5b1f7d2e723a42d30ba223ff899ec525d02cc1584bc999d2c87da8
+-- hash: 5420f7b090584fdb1639eb280691e88107832907af727d43d62719a21a8494e5
 
 name:           hs-rss-al-retposxto
 version:        0.1.0.0
@@ -42,12 +42,12 @@ library
     , JuicyPixels-extra
     , base >=4.7 && <5
     , base64
-    , blaze-builder
     , bytestring
     , html-parse
     , http-client
     , lens
     , mime-mail
+    , purebred-email
     , smtp-mail
     , text
     , url
@@ -67,13 +67,13 @@ executable hs-rss-al-retposxto-exe
     , JuicyPixels-extra
     , base >=4.7 && <5
     , base64
-    , blaze-builder
     , bytestring
     , hs-rss-al-retposxto
     , html-parse
     , http-client
     , lens
     , mime-mail
+    , purebred-email
     , smtp-mail
     , text
     , url

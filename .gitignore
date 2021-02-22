@@ -23,5 +23,5 @@ cabal.project.local~
 .ghc.environment.*
 *.html
 *.xml
-.DS_Store
+*.DS_Store
 api.key

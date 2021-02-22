@@ -20,7 +20,7 @@ import           Data.ByteString.Lazy.Base64          (encodeBase64)
 import           MalgrandigiBildon
 import           GrizigiBildon
 
-ekstrakti :: Bool -> Int -> String -> Text -> Text -> IO (String, Text)
+ekstrakti :: Bool -> Int -> String -> Text -> Text -> IO (Text, Text)
 ekstrakti porLegilo largxo servo bazaTeksto teksto = 
     let 
         elementoj = parseTokens teksto
@@ -28,15 +28,13 @@ ekstrakti porLegilo largxo servo bazaTeksto teksto =
                 TagOpen "article" _ -> True
                 _ -> False
             ) elementoj
-        titolo = trim $ sercxiTitolon False elementoj
+        titolo = strip $ sercxiTitolon False elementoj
     in do
         teksto <- aliformi porLegilo largxo servo bazaTeksto [Nothing] $ filtri havasArtikolon False [Nothing] elementoj
         return (titolo, teksto)
-    where 
-        trim = unpack . strip . pack
 
 
-sercxiTitolon :: Bool -> [Token] -> String
+sercxiTitolon :: Bool -> [Token] -> Text
 sercxiTitolon _ [] = "sen titolo"
 sercxiTitolon enTitolo (x:xs) = 
     case x of 
@@ -50,7 +48,7 @@ sercxiTitolon enTitolo (x:xs) =
                 _ -> sercxiTitolon False xs
         ContentText teksto ->
             if enTitolo then
-                (unpack teksto) ++ sercxiTitolon enTitolo xs
+                append teksto $ sercxiTitolon enTitolo xs
             else 
                 sercxiTitolon enTitolo xs
         _ -> sercxiTitolon enTitolo xs
@@ -230,7 +228,7 @@ ekstraktiServon retpagxo =
                     Just $ (exportHost servo)
                 _ -> Nothing 
 
-simpligiRetpagxon :: String -> Bool -> Int -> IO (Either String (String, Text))
+simpligiRetpagxon :: String -> Bool -> Int -> IO (Either String (Text, Text))
 simpligiRetpagxon retpagxo porLegilo largxo = do
     case ekstraktiServon retpagxo of
         Just servo -> do

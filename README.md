@@ -16,11 +16,13 @@ Se vi volas vi povas inkluzivi la bildojn en la artikoloj kaj redirekti la retpo
 - surdiskigi simpligitan retpaĝon
 - elsendi simpligitan retpaĝon majlen
 - elsendi (kelkfoje) simpligitan retpaĝon al Kindel-o
+- uzi TLS servo kiel gmx.com por la majloj
+- la nomo de la dosiero en la majloj korektitas, sed ĉi tiu majlsistemo uzas nur usonajn signojn. 
 
 ## kion mi devas korekti
 
-- la nomo de la dosiero en la majloj.
 - mi devas uzi la maldiligentajn versiojn de la tipoj se eblas. 
+- la simpligo de la retpaĝoj el Medium
 
 ## la bazoj de la projekto
 

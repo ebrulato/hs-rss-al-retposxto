@@ -1,7 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import qualified Data.Text.IO                  as T     (putStrLn, writeFile) -- ?
-import           Data.Text                              (Text)
+import           Data.Text                              (Text, append, unpack)
 import           Simpligi
 import           Data.List
 import           System.Console.GetOpt
@@ -76,11 +78,11 @@ sercxiRetadreso = sercxiFlago (\n -> case n of
                         Retadreso v -> Just v
                         _ -> Nothing ) 
 
-fariDosiero :: Maybe ([Flag], String, Text) -> IO (Maybe ([Flag], String, Text))
+fariDosiero :: Maybe ([Flag], Text, Text) -> IO (Maybe ([Flag], Text, Text))
 fariDosiero Nothing = return Nothing
 fariDosiero (Just (args, titolo, teksto)) =
     if (Dosiero `elem` args) then do
-        T.writeFile (titolo ++ ".html") teksto
+        T.writeFile (unpack $ append titolo ".html") teksto
         return $ Just (args, titolo, teksto)
     else 
         case sercxiRetadreso args of 
@@ -99,7 +101,7 @@ sercxiRetposxto = do
         _ -> return $ Nothing
 
 
-fariRetadreso :: Maybe ([Flag], String, Text) -> IO (Maybe ([Flag], String, Text))
+fariRetadreso :: Maybe ([Flag], Text, Text) -> IO (Maybe ([Flag], Text, Text))
 fariRetadreso Nothing = return Nothing
 fariRetadreso (Just (args, titolo, teksto)) = do
         mbRetposxto <- sercxiRetposxto
