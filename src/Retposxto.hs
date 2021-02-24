@@ -2,6 +2,7 @@
 
 module Retposxto
     ( sendiMajlon
+    , sendiMajlojn
     ) where
 
 import              Control.Exception
@@ -11,11 +12,38 @@ import qualified    Data.Text.Lazy                  as TL   (pack, fromStrict, t
 import              Data.Text.Lazy.Encoding                 (encodeUtf8, decodeUtf8)
 import qualified    Data.ByteString.Lazy            as L
 import              Data.String                             (fromString)
+import              Data.Char                               (ord)
 import              Network.Mail.SMTP
-import qualified    Network.Mail.Mime               as M    (plainPart, htmlPart, Disposition(..), Encoding(..), Part(..), PartContent(..))
+import qualified    Network.Mail.Mime               as M    (plainPart, htmlPart, Mail, Disposition(..), Encoding(..), Part(..), PartContent(..))
 
-sendiMajlon :: (String, String, String) -> String -> T.Text -> T.Text -> Bool -> IO (Either String ())
-sendiMajlon (servo, salutnomo, pasvorto) retadreso titolo teksto porLegilo = 
+sendiMajlon :: (String, String, String) -> String -> T.Text -> T.Text -> Bool -> Bool -> IO (Either String ())
+sendiMajlon (servo, salutnomo, pasvorto) retadreso titolo teksto porLegilo babilu = 
+    let
+        (mail, dosiero) = fariMajlon salutnomo retadreso titolo teksto porLegilo
+    in do
+        rezulto <- try $ sendMailWithLoginSTARTTLS servo salutnomo pasvorto mail
+        case (rezulto :: (Either SomeException ())) of
+            Right () -> do
+                if babilu then TIO.putStrLn $ T.pack $ "sendis al " ++ retadreso ++ " la dosieron \"" ++ dosiero ++ "\"" else return ()
+                return $ Right ()
+            Left eraro -> return $ Left (show eraro)
+
+
+sendiMajlojn :: (String, String, String) -> String -> [(T.Text, T.Text)] -> Bool -> Bool -> IO ()
+sendiMajlojn (servo, salutnomo, pasvorto) retadreso dokumentoj porLegilo babilu = 
+    let
+        majloj = map (\(titolo, teksto) -> fariMajlon salutnomo retadreso titolo teksto porLegilo) dokumentoj
+    in do
+        con <- connectSMTPSTARTTLS servo
+        _ <- sendCommand con (AUTH LOGIN salutnomo pasvorto)
+        mapM (\(majlo, dosiero) -> do 
+            renderAndSend con majlo
+            if babilu then TIO.putStrLn $ T.pack $ "sendis al " ++ retadreso ++ " la dosieron \"" ++ dosiero ++ "\"" else return ()
+            ) majloj 
+        closeSMTP con
+
+fariMajlon :: String -> String -> T.Text -> T.Text -> Bool -> (M.Mail, String)
+fariMajlon salutnomo retadreso titolo teksto porLegilo =
     let 
         from       = Address Nothing (T.pack salutnomo)
         to         = [Address Nothing (T.pack retadreso)]
@@ -23,28 +51,31 @@ sendiMajlon (servo, salutnomo, pasvorto) retadreso titolo teksto porLegilo =
         bcc        = []
         subject    = titolo
         body       = M.plainPart $ TL.fromStrict titolo
-        dosiero    = korekti titolo 
+        dosiero    = (korekti titolo) ++ ".html"
         mail       = if porLegilo then 
                         simpleMail from to cc bcc subject [body, 
                             M.Part
                                 "application/octet-stream"
                                 M.Base64 
-                                (M.AttachmentDisposition (T.pack $ dosiero ++ ".html"))
+                                (M.AttachmentDisposition $ T.pack dosiero)
                                 [("Content-Type", T.append "text/html; charset=UTF-8; name=" titolo)]
                                 (M.PartContent (encodeUtf8 . TL.fromStrict $ teksto))
                         ]
                     else 
                         simpleMail from to cc bcc subject [body, (M.htmlPart (TL.fromStrict teksto))]
-    in do
-        rezulto <- try $ sendMailWithLoginSTARTTLS servo salutnomo pasvorto mail
-        case (rezulto :: (Either SomeException ())) of
-            Right () -> return $ Right ()
-            Left eraro -> return $ Left (show eraro)
+    in
+        (mail, dosiero)
 
 
 korekti :: T.Text -> String
 korekti t =
-    demetiSpecialajnStirsignojn . T.unpack . demetiHTMLEntity . korektiXSistemo . T.strip $ t
+    farigxiUsonen . 
+        demetiSpecialajnStirsignojn . 
+        T.unpack . 
+        demetiHTMLEntity . 
+        korektiFrance . 
+        korektiXSistemo . 
+        T.strip $ t
 
 korektiXSistemo :: T.Text -> T.Text
 korektiXSistemo t =
@@ -62,6 +93,37 @@ korektiXSistemo t =
     T.replace "Ŝ" "Sx" $
     T.replace "ǚ" "ux" $
     T.replace "Ǔ" "Ux" t
+
+korektiFrance :: T.Text -> T.Text
+korektiFrance t =
+    T.replace "à" "a"$ 
+    T.replace "â" "a" $
+    T.replace "À" "A" $
+    T.replace "Â" "A" $
+    T.replace "ç" "c" $
+    T.replace "Ç" "C" $
+    T.replace "è" "e" $
+    T.replace "È" "E" $
+    T.replace "é" "e" $
+    T.replace "É" "E" $
+    T.replace "ê" "e" $
+    T.replace "Ê" "E" $
+    T.replace "î" "i" $
+    T.replace "Î" "I" $
+    T.replace "ï" "i" $
+    T.replace "Ï" "I" $
+    T.replace "ô" "o" $
+    T.replace "œ" "oe" $
+    T.replace "ö" "o" $
+    T.replace "Ô" "O" $
+    T.replace "Œ" "OE" $
+    T.replace "Ö" "O" $    
+    T.replace "ù" "u" $    
+    T.replace "ü" "u" $    
+    T.replace "Ù" "U" $    
+    T.replace "Ü" "U" $    
+    T.replace "Û" "U" $    
+    T.replace "û" "u" t
 
 demetiHTMLEntity :: T.Text -> T.Text
 demetiHTMLEntity t =
@@ -85,3 +147,9 @@ demetiHTMLEntity2 t =
 demetiSpecialajnStirsignojn :: String -> String
 demetiSpecialajnStirsignojn xs = [x | x <- xs, not (elem x ("()<>@,.\\/?![]=:;\"\'" :: [Char])) ]
 
+farigxiUsonen :: String -> String
+farigxiUsonen s =
+    filter (\n -> ord n > 47 && ord n < 58
+                  || ord n == 32
+                  || ord n > 64 && ord n < 91
+                  || ord n > 96 && ord n < 123) s

@@ -19,6 +19,7 @@ import           Codec.Picture                        (decodeImage, dynamicMap, 
 import           Data.ByteString.Lazy.Base64          (encodeBase64)
 import           MalgrandigiBildon
 import           GrizigiBildon
+import           Helpi
 
 ekstrakti :: Bool -> Int -> String -> Text -> Text -> IO (Text, Text)
 ekstrakti porLegilo largxo servo bazaTeksto teksto = 
@@ -208,43 +209,24 @@ filtri havasArtikolon artikole fermoj (x:xs) =
                 Just (TagClose "style") -> False
                 _ -> True
 
-korektiServon :: String -> String -> String
-korektiServon servo retpagxo =
-    case importURL retpagxo of 
-        Nothing -> servo ++ retpagxo -- ?
-        Just url ->
-            case url_type url of 
-                Absolute servo -> retpagxo                    
-                HostRelative -> servo ++ retpagxo
-                PathRelative -> servo ++ "/" ++ retpagxo
-                
-ekstraktiServon :: String -> Maybe String 
-ekstraktiServon retpagxo = 
-    case importURL retpagxo of 
-        Nothing -> Nothing
-        Just url ->
-            case url_type url of 
-                Absolute servo -> 
-                    Just $ (exportHost servo)
-                _ -> Nothing 
 
-simpligiRetpagxon :: String -> Bool -> Int -> IO (Either String (Text, Text))
-simpligiRetpagxon retpagxo porLegilo largxo = do
+simpligiRetpagxon :: String -> Bool -> Int -> Bool -> IO (Either String (Text, Text))
+simpligiRetpagxon retpagxo porLegilo largxo babilu = do
     case ekstraktiServon retpagxo of
         Just servo -> do
             r <- get retpagxo
             if r ^. responseStatus . statusCode == 200 then do
                 (titolo, teksto) <- ekstrakti porLegilo largxo servo (pack $ "<a href="++retpagxo++">source</a>") $ decodeUtf8 $ B.concat . BL.toChunks $ r ^. responseBody
-                if porLegilo then 
+                if porLegilo then do
+                    if babilu then putStrLn $ "ekstraktis por legilo la ligilo: " ++ retpagxo else return ()
                     return $ Right (titolo,  append (append "<html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\"></head><body>" teksto) (pack $ "</body></html>"))
-                else 
+                else do
+                    if babilu then putStrLn $ "ekstraktis la ligilo: " ++ retpagxo else return ()
                     return $ Right (titolo, teksto)
             else 
                 return $ Left $ "La retpagxo ne legeblas : responsa kodo = " ++ (show $ r ^. responseStatus . statusCode)
         Nothing -> return $ Left $ "La retpagxo ne havas gxustan servon : " ++ retpagxo
     
--- https://hackage.haskell.org/package/feed 
-
 elsxutiBildon :: String -> Int -> IO (Either String Text)
 elsxutiBildon retBildon largxo = do
     r <- get retBildon 

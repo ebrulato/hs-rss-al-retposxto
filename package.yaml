@@ -39,7 +39,7 @@ library:
     - base64
     - smtp-mail
     - mime-mail
-    - purebred-email
+    - aeson
 
 executables:
   hs-rss-al-retposxto-exe:
@@ -64,7 +64,7 @@ executables:
     - base64
     - smtp-mail
     - mime-mail
-    - purebred-email
+    - aeson
 
 
 tests:

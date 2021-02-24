@@ -24,4 +24,6 @@ cabal.project.local~
 *.html
 *.xml
 *.DS_Store
+.DS_Store
 api.key
+fluoj.json
