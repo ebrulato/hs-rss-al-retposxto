@@ -67,7 +67,7 @@ parse prgNomo argv = case getOpt Permute flagoj argv of
             hPutStrLn stderr (concat errs ++ usageInfo (header prgNomo) flagoj)
             exitWith (ExitFailure 1)
 
-        where header prgName = "Uzado: "++ prgNomo ++ " [-ldfhvb] <retpaĝojn aǔ fluoligilon> \n\n"
+        where header prgName = "Uzado: "++ prgNomo ++ " [-ldfkhvb] <retpaĝojn aǔ fluoligilon> \n\n"
 
 sercxiFlago :: (Flag -> Maybe a) -> [Flag] -> Maybe a
 sercxiFlago f [] = Nothing
