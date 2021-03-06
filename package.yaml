@@ -19,8 +19,10 @@ extra-source-files:
 # common to point users to the README.md file.
 description:         Please see the README on GitHub at <https://github.com/ebrulato/hs-rss-al-retposxto#readme>
 
+
 dependencies:
 - base >= 4.7 && < 5
+- network >= 2.4 && < 3.0
 
 library:
   source-dirs:
@@ -40,6 +42,7 @@ library:
     - smtp-mail
     - mime-mail
     - aeson
+    - mtl
 
 executables:
   hs-rss-al-retposxto-exe:
@@ -65,7 +68,7 @@ executables:
     - smtp-mail
     - mime-mail
     - aeson
-
+    - mtl
 
 tests:
   hs-rss-al-retposxto-test:

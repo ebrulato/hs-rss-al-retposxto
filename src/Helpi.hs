@@ -1,10 +1,11 @@
 module Helpi (
     ekstraktiServon
+    , ekstraktiVojon
     , korektiServon
     , seSkribu
 ) where
 
-import           Network.URL                          (importURL, URLType(..), exportHost, url_type)
+import           Network.URL                          (importURL, URLType(..), exportHost, url_type, url_path)
 
 
 ekstraktiServon :: String -> Maybe String 
@@ -16,6 +17,13 @@ ekstraktiServon retpagxo =
                 Absolute servo -> 
                     Just $ (exportHost servo)
                 _ -> Nothing 
+
+ekstraktiVojon :: String -> Maybe String
+ekstraktiVojon retpagxo =
+    case importURL retpagxo of
+        Nothing -> Nothing
+        Just url -> Just $ url_path url
+
 
 korektiServon :: String -> String -> String
 korektiServon servo retpagxo =

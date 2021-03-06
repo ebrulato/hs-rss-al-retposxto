@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 780a39dbcaedd637ba90391cf5ce9262f783c744073d55c3fbb4bb5d33270df8
+-- hash: 152f71a2e9d21486462d35f3a719e8e98a786b702f0747bfac3c70fb9388b3af
 
 name:           hs-rss-al-retposxto
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 
 library
   exposed-modules:
+      Alklaki
       Fluo
       Fluoj
       GrizigiBildon
@@ -51,6 +52,8 @@ library
     , http-client
     , lens
     , mime-mail
+    , mtl
+    , network >=2.4 && <3.0
     , smtp-mail
     , text
     , url
@@ -77,6 +80,8 @@ executable hs-rss-al-retposxto-exe
     , http-client
     , lens
     , mime-mail
+    , mtl
+    , network >=2.4 && <3.0
     , smtp-mail
     , text
     , url
@@ -94,4 +99,5 @@ test-suite hs-rss-al-retposxto-test
   build-depends:
       base >=4.7 && <5
     , hs-rss-al-retposxto
+    , network >=2.4 && <3.0
   default-language: Haskell2010

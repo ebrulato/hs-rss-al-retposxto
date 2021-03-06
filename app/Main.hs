@@ -20,6 +20,7 @@ import           Retposxto
 import qualified Fluo                          as F     (legiFluon)
 import qualified Fluoj                         as FJ    (kreiFluon, kreiFluojn, Fluo, Fluoj, malkodiFluojn, kodiFluojn, aldoni, novajnRetpagxojn)
 import           Helpi
+import           Alklaki
 
 retposxtaServo = "SMTP_SERVER"
 retposxtaSalutnomo = "SMTP_LOGIN"
@@ -34,15 +35,17 @@ data Flag
         | Versio                -- -v --vervio
         | Fluo                  -- -f --fluo
         | Babili                -- -b --babili
+        | Kindle                -- -k --kindle
         deriving (Show, Eq)
 
 
 flagoj =
-       [Option ['l']    ["legilo"]      (NoArg Legilo)                          "La simpligita retpaĝo kunhavas ĝia(j)n bildon(j)n tiel ĝi legeblas legile (Kindleq, ...)"
-       ,Option ['d']    ["dosiero"]     (NoArg Dosiero)                         "Skribas la simpligita retpaĝo en dosiero nomigita kun la titolo de la artikolo"
-       ,Option []       ["largxo"]      (ReqArg Largxo "ek. 400")               "Se vi uzas -l/--legilo parametron, la largxo definas la dimensiojn de la bildojn. La defaǔltvalo estas 400 rastrumeroj."
-       ,Option []       ["retadreso"]   (ReqArg Retadreso "ek. nomo@servo.eo")  "Se vi uzas -l/--legilo parametron, la artikolo inkluzivigitos je la emajlo kiel dosiero."
-       ,Option ['f']    ["fluo"]        (NoArg Fluo)                            "Se vi uzas --fluo parametron, vi enlistigas la ligilo(j)n kiel fluo(j) registren sur via diskingo AǓ vi uzas la dosieron «fluoj.json» por trovi retpaĝojn."
+       [Option ['l']    ["legilo"]      (NoArg Legilo)                          "La simpligita retpaĝo kunhavas ĝia(j)n bildon(j)n tiel\nĝi legeblas legile (Kindle, ...)"
+       ,Option ['d']    ["dosiero"]     (NoArg Dosiero)                         "Skribas la simpligita retpaĝo en dosiero nomigita kun\nla titolo de la artikolo"
+       ,Option []       ["largxo"]      (ReqArg Largxo "400")                   "Se vi uzas -l/--legilo parametron, la largxo definas\nla dimensiojn de la bildojn. La defaǔltvalo estas\n400 rastrumeroj."
+       ,Option []       ["retadreso"]   (ReqArg Retadreso "nomo@servo.eo")      "Se vi uzas -l/--legilo parametron, la artikolo\nelsendigitos emajle al la retadreso."
+       ,Option ['f']    ["fluo"]        (NoArg Fluo)                            "Se vi uzas --fluo parametron, vi enlistigas la\nligilo(j)n kiel fluo(j) registren sur via diskingo\nAǓ vi uzas la dosieron «fluoj.json» por\ntrovi retpaĝojn."
+       ,Option ['k']    ["kindle"]      (NoArg Kindle)                          "Estonteca uzado…"
        ,Option ['h']    ["helpo"]       (NoArg Help)                            "Afiŝas tiun ĉi mesaĝon por helpi vin."
        ,Option ['v']    ["versio"]      (NoArg Versio)                          "Afiŝas la version de tiu ĉi ilo."
        ,Option ['b']    ["babili"]      (NoArg Babili)                          "Afiŝas mesaĝojn dum la ago de la programo."
@@ -64,7 +67,7 @@ parse prgNomo argv = case getOpt Permute flagoj argv of
             hPutStrLn stderr (concat errs ++ usageInfo (header prgNomo) flagoj)
             exitWith (ExitFailure 1)
 
-        where header prgName = "Uzado: "++ prgNomo ++ " [-ldfhvb] <retpaĝoj aǔ fluoligilon> \n\n"
+        where header prgName = "Uzado: "++ prgNomo ++ " [-ldfhvb] <retpaĝojn aǔ fluoligilon> \n\n"
 
 sercxiFlago :: (Flag -> Maybe a) -> [Flag] -> Maybe a
 sercxiFlago f [] = Nothing
@@ -95,6 +98,9 @@ devasBabili = elem Babili
 fluaDemandon :: [Flag] -> Bool
 fluaDemandon = elem Fluo 
 
+kindleDemandon :: [Flag] -> Bool
+kindleDemandon = elem Kindle 
+
 fariDosiero :: Maybe ([Flag], Text, Text) -> IO (Maybe ([Flag], Text, Text))
 fariDosiero Nothing = return Nothing
 fariDosiero (Just (args, titolo, teksto)) =
@@ -119,26 +125,6 @@ sercxiRetposxto = do
         (Just servo, Just salutnomo, Just pasvorto) -> return $ Just $ (servo, salutnomo, pasvorto)
         _ -> return $ Nothing
 
-
-{-
-fariRetadreso :: Maybe ([Flag], Text, Text) -> IO (Maybe ([Flag], Text, Text))
-fariRetadreso Nothing = return Nothing
-fariRetadreso (Just (args, titolo, teksto)) = do
-        mbRetposxto <- sercxiRetposxto
-        case (sercxiRetadreso args, mbRetposxto) of
-            (Nothing, _) -> return $ Just (args, titolo, teksto)
-            (Just retadreso, Just retposxto) -> do
-                rezulto <- sendiMajlon retposxto retadreso titolo teksto (Legilo `elem` args) (devasBabili args)
-                case rezulto of 
-                    Left mesagxo -> do 
-                        putStrLn $ "eraro : " ++ mesagxo
-                        return $ Just (args, titolo, teksto)
-                    Right _ -> return $ Just (args, titolo, teksto)
-            (Just retadreso, Nothing) -> do
-                putStrLn $ "eraro : vi deklaru SMTP-on"
-                return $ Just (args, titolo, teksto)
--}
-
 elsendiMajlojn :: [Flag] -> [String] -> IO ()
 elsendiMajlojn args retpagxojn = do
     mbDokumentoj <- mapM (simpligiRetpagxon args) retpagxojn          
@@ -155,8 +141,6 @@ elsendiMajlojn args retpagxojn = do
                     ) mbDokumentoj
             sendiMajlojn retposxto retadreso dokumentoj (Legilo `elem` args) (devasBabili args) 
     
-
-
 simpligiRetpagxon :: [Flag] -> String -> IO (Maybe (Text, Text))
 simpligiRetpagxon args retpagxo = do 
     retpagxoSimpligita <- S.simpligiRetpagxon retpagxo (Legilo `elem` args) (sercxiLargxo 400 args) (devasBabili args)
@@ -208,7 +192,6 @@ main = do
                     putStrLn $ show eraro          
         else do
             putStrLn "Vi donu retpaĝojn aǔ fluoligilojn."
-            return ()
     else
         if fluaDemandon args then do
             fluoj <- mapM (legiFluon args) ligiloj            
@@ -217,9 +200,18 @@ main = do
             (kf, l) <- return $ FJ.aldoni malnovajFluoj novajFluoj
             BL.writeFile "fluoj.json" $ FJ.kodiFluojn kf
             seSkribu (devasBabili args) $ "Aldoni "++ (show l) ++ " fluo(j)n."
-            return ()
         else do
             elsendiMajlojn args ligiloj       
+    if kindleDemandon args then
+        alklakiKindle
+    else 
+        return ()
             
 
- 
+alklakiKindle :: IO ()
+alklakiKindle = do
+    mbRetposxto <- sercxiRetposxto
+    case mbRetposxto of
+        Nothing -> return ()
+        Just retposxto -> alklakiKontrolon retposxto
+

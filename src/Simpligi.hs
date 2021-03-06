@@ -12,7 +12,6 @@ import           Data.Text                            (Text, pack, unpack, appen
 import qualified Data.ByteString               as B   (concat)
 import qualified Data.ByteString.Lazy          as BL  (toChunks)
 import           Data.Text.Lazy                       (toStrict) 
-import           Network.URL                          (URL, URLType(..), Host, importURL, exportHost, secure, url_type)
 import           Network.HTTP.Client                  (HttpException)
 import           Data.Text.Encoding                   (decodeUtf8, encodeUtf8)
 import           Codec.Picture                        (decodeImage, dynamicMap, imageWidth, encodePng)
@@ -68,7 +67,10 @@ aliformi porLegilo largxo servo bazaTeksto fermoj (x:xs) =
             "h1" -> aliformi porLegilo largxo servo (append bazaTeksto "<h1>") ((Just $ TagClose "h1"):fermoj) xs
             "h2" -> aliformi porLegilo largxo servo (append bazaTeksto "<h2>") ((Just $ TagClose "h2"):fermoj) xs
             "h3" -> aliformi porLegilo largxo servo (append bazaTeksto "<h3>") ((Just $ TagClose "h3"):fermoj) xs
-            "strong" -> aliformi porLegilo largxo servo (append bazaTeksto "<h3>") ((Just $ TagClose "strong"):fermoj) xs
+            "li" -> aliformi porLegilo largxo servo (append bazaTeksto "<li>") ((Just $ TagClose "li"):fermoj) xs
+            "ol" -> aliformi porLegilo largxo servo (append bazaTeksto "<ol>") ((Just $ TagClose "ol"):fermoj) xs
+            "ul" -> aliformi porLegilo largxo servo (append bazaTeksto "<ul>") ((Just $ TagClose "ul"):fermoj) xs
+            "strong" -> aliformi porLegilo largxo servo (append bazaTeksto "<strong>") ((Just $ TagClose "strong"):fermoj) xs
             "figcaption" -> aliformi porLegilo largxo servo (append bazaTeksto "<center><i>") ((Just $ TagClose "figcaption"):fermoj) xs
             "address" -> aliformi porLegilo largxo servo bazaTeksto ((Just $ TagClose "address"):fermoj) xs
             "a" -> aliformi porLegilo largxo servo (append bazaTeksto $ pack $ "<a href="++ (korektiServon servo $ sercxiAtributon "href" atributoj) ++" >") ((Just $ TagClose "a"):fermoj) xs
@@ -91,7 +93,10 @@ aliformi porLegilo largxo servo bazaTeksto fermoj (x:xs) =
                         (TagClose "h1", "h1") -> aliformi porLegilo largxo servo (append bazaTeksto "</h1>") (tail fermoj) xs
                         (TagClose "h2", "h2") -> aliformi porLegilo largxo servo (append bazaTeksto "</h2>") (tail fermoj) xs
                         (TagClose "h3", "h3") -> aliformi porLegilo largxo servo (append bazaTeksto "</h3>") (tail fermoj) xs
-                        (TagClose "strong", "strong") -> aliformi porLegilo largxo servo (append bazaTeksto "</h3>") (tail fermoj) xs
+                        (TagClose "li", "li") -> aliformi porLegilo largxo servo (append bazaTeksto "</li>") (tail fermoj) xs
+                        (TagClose "ol", "ol") -> aliformi porLegilo largxo servo (append bazaTeksto "</ol>") (tail fermoj) xs
+                        (TagClose "ul", "ul") -> aliformi porLegilo largxo servo (append bazaTeksto "</ul>") (tail fermoj) xs
+                        (TagClose "strong", "strong") -> aliformi porLegilo largxo servo (append bazaTeksto "</strong>") (tail fermoj) xs
                         (TagClose "figcaption", "figcaption") -> aliformi porLegilo largxo servo (append bazaTeksto "</i></center>") (tail fermoj) xs
                         (TagClose "address", "address") -> aliformi porLegilo largxo servo bazaTeksto (tail fermoj) xs
                         (TagClose "a", "a") -> aliformi porLegilo largxo servo (append bazaTeksto "</a>") (tail fermoj) xs
@@ -212,9 +217,9 @@ filtri havasArtikolon artikole fermoj (x:xs) =
 
 simpligiRetpagxon :: String -> Bool -> Int -> Bool -> IO (Either String (Text, Text))
 simpligiRetpagxon retpagxo porLegilo largxo babilu = do
-    case ekstraktiServon retpagxo of
-        Just servo -> do
-            r <- get retpagxo
+    case (ekstraktiServon retpagxo, ekstraktiVojon retpagxo) of
+        (Just servo, Just vojo) -> do
+            r <- get $ servo ++ "/" ++ vojo
             if r ^. responseStatus . statusCode == 200 then do
                 (titolo, teksto) <- ekstrakti porLegilo largxo servo (pack $ "<a href="++retpagxo++">source</a>") $ decodeUtf8 $ B.concat . BL.toChunks $ r ^. responseBody
                 if porLegilo then do
@@ -225,7 +230,7 @@ simpligiRetpagxon retpagxo porLegilo largxo babilu = do
                     return $ Right (titolo, teksto)
             else 
                 return $ Left $ "La retpagxo ne legeblas : responsa kodo = " ++ (show $ r ^. responseStatus . statusCode)
-        Nothing -> return $ Left $ "La retpagxo ne havas gxustan servon : " ++ retpagxo
+        (Nothing, _) -> return $ Left $ "La retpagxo ne havas gxustan servon : " ++ retpagxo
     
 elsxutiBildon :: String -> Int -> IO (Either String Text)
 elsxutiBildon retBildon largxo = do
