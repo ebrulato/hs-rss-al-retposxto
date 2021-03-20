@@ -3,12 +3,13 @@
 module Main where
 
 import qualified Data.Text.IO                  as T     (putStrLn, writeFile) -- ?
-import           Data.Text                              (Text, append, unpack)
+import           Data.Text                              (Text, append, unpack, pack, dropEnd)
 import qualified Simpligi                      as S     (simpligiRetpagxon)
 import           Data.List
 import qualified Data.ByteString.Lazy          as BL
 import qualified Data.ByteString               as B
 import           System.Console.GetOpt
+import           System.Directory 
 import           System.Environment
 import           System.Exit
 import           System.IO
@@ -36,13 +37,15 @@ data Flag
         | Fluo                  -- -f --fluo
         | Babili                -- -b --babili
         | Kindle                -- -k --kindle
+        | Dosierejo String      -- -j --dosierejo
         deriving (Show, Eq)
 
 
 flagoj =
        [Option ['l']    ["legilo"]      (NoArg Legilo)                          "La simpligita retpaĝo kunhavas ĝia(j)n bildon(j)n tiel\nĝi legeblas legile (Kindle, ...)"
        ,Option ['d']    ["dosiero"]     (NoArg Dosiero)                         "Skribas la simpligita retpaĝo en dosiero nomigita kun\nla titolo de la artikolo"
-       ,Option []       ["largxo"]      (ReqArg Largxo "400")                   "Se vi uzas -l/--legilo parametron, la largxo definas\nla dimensiojn de la bildojn. La defaǔltvalo estas\n400 rastrumeroj."
+       ,Option []       ["dosierejo"]   (ReqArg Dosierejo "10")                 "Kun la -retadreso parametro, ĉi tiu ilo serĉas la\ndosierojn en la nuna dosierejo. La valoro estas la\nkvanto de dosieroj elsendotaj."
+       ,Option []       ["largxo"]      (ReqArg Largxo "400")                   "Se vi uzas -l/--legilo parametron, la largxo definas\nla dimensiojn de la bildojn. La defaǔltvaloro estas\n400 rastrumeroj."
        ,Option []       ["retadreso"]   (ReqArg Retadreso "nomo@servo.eo")      "Se vi uzas -l/--legilo parametron, la artikolo\nelsendigitos emajle al la retadreso."
        ,Option ['f']    ["fluo"]        (NoArg Fluo)                            "Se vi uzas --fluo parametron, vi enlistigas la\nligilo(j)n kiel fluo(j) registren sur via diskingo\nAǓ vi uzas la dosieron «fluoj.json» por\ntrovi retpaĝojn."
        ,Option ['k']    ["kindle"]      (NoArg Kindle)                          "Estonteca uzado…"
@@ -76,14 +79,21 @@ sercxiFlago f (flago:flagoj) =
         Just s -> Just s 
         Nothing -> sercxiFlago f flagoj
 
+sercxiDosierejo :: Int -> [Flag] -> Int 
+sercxiDosierejo defauxlto flagoj = 
+        case dosierejoDemandon flagoj of 
+            Just v -> if v < 1 then defauxlto else v
+            Nothing -> defauxlto
+
+
 sercxiLargxo :: Int -> [Flag] -> Int 
 sercxiLargxo defauxlto flagoj = 
     let 
-        valo = sercxiFlago (\n -> case n of 
+        valoro = sercxiFlago (\n -> case n of 
                         Largxo v -> readMaybe v   
                         _ -> Nothing ) flagoj
     in
-        case valo of 
+        case valoro of 
             Just v -> if v < 10 then defauxlto else v
             Nothing -> defauxlto
 
@@ -91,6 +101,14 @@ sercxiRetadreso :: [Flag] -> Maybe String
 sercxiRetadreso = sercxiFlago (\n -> case n of 
                         Retadreso v -> Just v
                         _ -> Nothing ) 
+
+dosierejoDemandon :: [Flag] -> Maybe Int
+dosierejoDemandon = sercxiFlago (\n -> case n of 
+                        Dosierejo v -> readMaybe v
+                        _ -> Nothing )
+
+seDosierejoDemandon :: [Flag] -> Bool
+seDosierejoDemandon flagoj = dosierejoDemandon flagoj /= Nothing
 
 devasBabili :: [Flag] -> Bool
 devasBabili = elem Babili 
@@ -101,11 +119,12 @@ fluaDemandon = elem Fluo
 kindleDemandon :: [Flag] -> Bool
 kindleDemandon = elem Kindle 
 
+
 fariDosiero :: Maybe ([Flag], Text, Text) -> IO (Maybe ([Flag], Text, Text))
 fariDosiero Nothing = return Nothing
 fariDosiero (Just (args, titolo, teksto)) =
     if (Dosiero `elem` args) then do
-        nomo <- return $ unpack $ append titolo ".html"
+        nomo <- return $ (korekti titolo) ++ ".html"
         T.writeFile (nomo) teksto
         putStrLn $ "skribus diskingen " ++ nomo 
         return $ Just (args, titolo, teksto)
@@ -140,7 +159,38 @@ elsendiMajlojn args retpagxojn = do
                         Just _ -> True
                     ) mbDokumentoj
             sendiMajlojn retposxto retadreso dokumentoj (Legilo `elem` args) (devasBabili args) 
-    
+
+sercxiDosierojnHTML :: [FilePath] -> [FilePath]
+sercxiDosierojnHTML dosieroj =
+    filter (\n -> isSuffixOf ".html" n) dosieroj
+
+sercxiDosieron :: FilePath -> IO (Text, Text)
+sercxiDosieron fp = do
+    datumoj <- readFile fp
+    return $ (dropEnd 5 $ pack fp, pack datumoj)
+
+sercxiDosierojn :: Int -> IO ([(Text, Text)])
+sercxiDosierojn kvantoDeDosiero = do
+    tie <- getCurrentDirectory
+    cxioj <- listDirectory tie
+    cxiojHtml <- pure $ sercxiDosierojnHTML cxioj
+    mapM sercxiDosieron $ take kvantoDeDosiero cxiojHtml
+
+elsendiMajlojnElDosierejo :: [Flag] -> IO ()
+elsendiMajlojnElDosierejo args  = do
+    dokumentoj <- sercxiDosierojn $ sercxiDosierejo 10 args          
+    mbRetposxto <- sercxiRetposxto
+    case (sercxiRetadreso args, mbRetposxto) of
+        (Just retadreso, Just retposxto) -> do
+            sendiMajlojn retposxto retadreso dokumentoj (Legilo `elem` args) (devasBabili args)
+            seSkribu (devasBabili args) "Forviŝas dosierojn"
+            mapM (\n -> do 
+                dokumento <- pure $ unpack . fst $ n
+                removeFile $ dokumento ++ ".html"
+                seSkribu (devasBabili args) $ " « "++dokumento++" » forviŝita." ) dokumentoj 
+            return ()
+        _ -> return ()
+
 simpligiRetpagxon :: [Flag] -> String -> IO (Maybe (Text, Text))
 simpligiRetpagxon args retpagxo = do 
     retpagxoSimpligita <- S.simpligiRetpagxon retpagxo (Legilo `elem` args) (sercxiLargxo 400 args) (devasBabili args)
@@ -174,7 +224,9 @@ main = do
     prgNomo <- getProgName
     (args, ligiloj) <- getArgs >>= parse prgNomo
     if null ligiloj then do
-        if fluaDemandon args then do
+        if seDosierejoDemandon args then do 
+            elsendiMajlojnElDosierejo args
+        else if fluaDemandon args then do
             malnovajFluoj <- legiMalnovajnFluojn
             (retpagxojn, novajFluoj) <- FJ.novajnRetpagxojn malnovajFluoj
             if (devasBabili args) then do 

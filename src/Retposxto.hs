@@ -3,6 +3,7 @@
 module Retposxto
     ( sendiMajlon
     , sendiMajlojn
+    , korekti
     ) where
 
 import              Control.Exception

@@ -43,6 +43,7 @@ library:
     - mime-mail
     - aeson
     - mtl
+    - directory
 
 executables:
   hs-rss-al-retposxto-exe:
@@ -69,6 +70,7 @@ executables:
     - mime-mail
     - aeson
     - mtl
+    - directory
 
 tests:
   hs-rss-al-retposxto-test:

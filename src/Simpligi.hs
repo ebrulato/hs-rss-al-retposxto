@@ -81,6 +81,12 @@ aliformi porLegilo largxo servo bazaTeksto fermoj (x:xs) =
             "tr" -> aliformi porLegilo largxo servo (append bazaTeksto "<tr>") ((Just $ TagClose "tr"):fermoj) xs
             "td" -> aliformi porLegilo largxo servo (append bazaTeksto "<td>") ((Just $ TagClose "td"):fermoj) xs
             "i" -> aliformi porLegilo largxo servo (append bazaTeksto "<i>") ((Just $ TagClose "i"):fermoj) xs
+            "code" -> aliformi porLegilo largxo servo (append bazaTeksto "<code><strong>") ((Just $ TagClose "code"):fermoj) xs
+            "span" -> aliformi porLegilo largxo servo bazaTeksto ((Just $ TagClose "span"):fermoj) xs
+            "pre" -> aliformi porLegilo largxo servo (append bazaTeksto "<pre>") ((Just $ TagClose "pre"):fermoj) xs
+            "kbd" -> aliformi porLegilo largxo servo (append bazaTeksto "<kbd>") ((Just $ TagClose "kbd"):fermoj) xs
+            "samp" -> aliformi porLegilo largxo servo (append bazaTeksto "<samp>") ((Just $ TagClose "samp"):fermoj) xs
+            "var" -> aliformi porLegilo largxo servo (append bazaTeksto "<var>") ((Just $ TagClose "var"):fermoj) xs
             "address" -> aliformi porLegilo largxo servo bazaTeksto ((Just $ TagClose "address"):fermoj) xs
             "a" -> aliformi porLegilo largxo servo (append bazaTeksto $ pack $ "<a href="++ (korektiServon servo $ sercxiAtributon "href" atributoj) ++" >") ((Just $ TagClose "a"):fermoj) xs
             "img" -> aliformiBildonKunEraroj atributoj
@@ -112,6 +118,12 @@ aliformi porLegilo largxo servo bazaTeksto fermoj (x:xs) =
                         (TagClose "tr", "tr") -> aliformi porLegilo largxo servo (append bazaTeksto "</tr>") (tail fermoj) xs
                         (TagClose "td", "td") -> aliformi porLegilo largxo servo (append bazaTeksto "</td>") (tail fermoj) xs
                         (TagClose "i", "i") -> aliformi porLegilo largxo servo (append bazaTeksto "</i>") (tail fermoj) xs
+                        (TagClose "code", "code") -> aliformi porLegilo largxo servo (append bazaTeksto "</strong></code>") (tail fermoj) xs
+                        (TagClose "span", "span") -> aliformi porLegilo largxo servo bazaTeksto (tail fermoj) xs
+                        (TagClose "pre", "pre") -> aliformi porLegilo largxo servo (append bazaTeksto "</pre>") (tail fermoj) xs
+                        (TagClose "kbd", "kbd") -> aliformi porLegilo largxo servo (append bazaTeksto "</kbd>") (tail fermoj) xs
+                        (TagClose "samp", "samp") -> aliformi porLegilo largxo servo (append bazaTeksto "</samp>") (tail fermoj) xs
+                        (TagClose "var", "var") -> aliformi porLegilo largxo servo (append bazaTeksto "</var>") (tail fermoj) xs
                         (TagClose "address", "address") -> aliformi porLegilo largxo servo bazaTeksto (tail fermoj) xs
                         (TagClose "a", "a") -> aliformi porLegilo largxo servo (append bazaTeksto "</a>") (tail fermoj) xs
                         (_, _) -> aliformi porLegilo largxo servo bazaTeksto fermoj xs
@@ -174,6 +186,11 @@ filtri havasArtikolon artikole fermoj (x:xs) =
                 ("tr", True) -> x: filtri havasArtikolon artikole ((Just $ TagClose "tr"):fermoj) xs
                 ("td", True) -> x: filtri havasArtikolon artikole ((Just $ TagClose "td"):fermoj) xs
                 ("i", True) -> x: filtri havasArtikolon artikole ((Just $ TagClose "i"):fermoj) xs
+                ("code", True) -> x: filtri havasArtikolon artikole ((Just $ TagClose "code"):fermoj) xs
+                ("pre", True) -> x: filtri havasArtikolon artikole ((Just $ TagClose "pre"):fermoj) xs
+                ("kbd", True) -> x: filtri havasArtikolon artikole ((Just $ TagClose "kbd"):fermoj) xs
+                ("samp", True) -> x: filtri havasArtikolon artikole ((Just $ TagClose "samp"):fermoj) xs
+                ("var", True) -> x: filtri havasArtikolon artikole ((Just $ TagClose "var"):fermoj) xs
                 ("img", True) -> x : filtri havasArtikolon artikole fermoj xs
                 ("br", True) -> x : filtri havasArtikolon artikole fermoj xs
                 _ -> case head fermoj of 
@@ -208,6 +225,11 @@ filtri havasArtikolon artikole fermoj (x:xs) =
                             (TagClose "td", "td") -> x : filtri havasArtikolon artikole (tail fermoj) xs
                             (TagClose "tr", "tr") -> x : filtri havasArtikolon artikole (tail fermoj) xs
                             (TagClose "i", "i") -> x : filtri havasArtikolon artikole (tail fermoj) xs
+                            (TagClose "code", "code") -> x : filtri havasArtikolon artikole (tail fermoj) xs
+                            (TagClose "pre", "pre") -> x : filtri havasArtikolon artikole (tail fermoj) xs
+                            (TagClose "kbd", "kbd") -> x : filtri havasArtikolon artikole (tail fermoj) xs
+                            (TagClose "samp", "samp") -> x : filtri havasArtikolon artikole (tail fermoj) xs
+                            (TagClose "var", "var") -> x : filtri havasArtikolon artikole (tail fermoj) xs
                             _ -> x : filtri havasArtikolon artikole fermoj xs
             else 
                 case head fermoj of 
@@ -245,7 +267,7 @@ simpligiRetpagxon retpagxo porLegilo largxo babilu = do
         (Just servo, Just vojo) -> do
             r <- get $ servo ++ "/" ++ vojo
             if r ^. responseStatus . statusCode == 200 then do
-                (titolo, teksto, havasTabulon) <- ekstrakti porLegilo largxo servo (pack $ "<a href="++retpagxo++">source</a>") $ decodeUtf8 $ B.concat . BL.toChunks $ r ^. responseBody
+                (titolo, teksto, havasTabulon) <- ekstrakti porLegilo largxo servo (pack $ "<a href="++retpagxo++">fonto</a>") $ decodeUtf8 $ B.concat . BL.toChunks $ r ^. responseBody
                 if porLegilo then do
                     if babilu then putStrLn $ "ekstraktis por legilo la ligilo: " ++ retpagxo else return ()
                     return $ Right (titolo,  append (append (pack $ "<html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">"++(tabulon havasTabulon)++"</head><body>") teksto) (pack $ "</body></html>"))

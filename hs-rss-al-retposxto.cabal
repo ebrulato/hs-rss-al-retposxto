@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 152f71a2e9d21486462d35f3a719e8e98a786b702f0747bfac3c70fb9388b3af
+-- hash: f1d70112c7b6f998a601fa479ffb293306faad9be5473e96ba8fd043493560c0
 
 name:           hs-rss-al-retposxto
 version:        0.1.0.0
@@ -48,6 +48,7 @@ library
     , base >=4.7 && <5
     , base64
     , bytestring
+    , directory
     , html-parse
     , http-client
     , lens
@@ -75,6 +76,7 @@ executable hs-rss-al-retposxto-exe
     , base >=4.7 && <5
     , base64
     , bytestring
+    , directory
     , hs-rss-al-retposxto
     , html-parse
     , http-client
