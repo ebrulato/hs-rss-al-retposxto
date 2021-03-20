@@ -16,7 +16,8 @@ Se vi volas vi povas inkluzivi la bildojn en la artikoloj kaj elsendi la majlojn
 - surdiskigi simpligitajn retpaĝojn
 - elsendi simpligitjan retpaĝojn majlen
 - uzi TLS servo kiel gmx.com
-- la nomo de la dosiero en la majloj korektitas, sed ĉi tiu majlsistemo uzas nur usonajn signojn. 
+- la nomo de la dosiero en la majloj korektitas, sed ĉi tiu majlsistemo uzas nur usonajn signojn.
+- uzi la surdiskigitajn retpaĝojn en la majloj.
 - uzi RSS2
 - uzi Mediun
 
