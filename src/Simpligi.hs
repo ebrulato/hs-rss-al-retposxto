@@ -4,33 +4,35 @@ module Simpligi
     ( simpligiRetpagxon
     ) where
 
+import           Codec.Picture               (decodeImage, dynamicMap,
+                                              encodePng, imageWidth)
 import           Control.Exception
-import           Network.Wreq
 import           Control.Lens
-import           Text.HTML.Parser
-import           Data.Text                            (Text, pack, unpack, append, singleton, strip)
-import qualified Data.ByteString               as B   (concat)
-import qualified Data.ByteString.Lazy          as BL  (toChunks)
-import           Data.Text.Lazy                       (toStrict) 
-import           Network.HTTP.Client                  (HttpException)
-import           Data.Text.Encoding                   (decodeUtf8, encodeUtf8)
-import           Codec.Picture                        (decodeImage, dynamicMap, imageWidth, encodePng)
-import           Data.ByteString.Lazy.Base64          (encodeBase64)
-import           MalgrandigiBildon
+import qualified Data.ByteString             as B (concat)
+import qualified Data.ByteString.Lazy        as BL (toChunks)
+import           Data.ByteString.Lazy.Base64 (encodeBase64)
+import           Data.Text                   (Text, append, pack, singleton,
+                                              strip, unpack)
+import           Data.Text.Encoding          (decodeUtf8, encodeUtf8)
+import           Data.Text.Lazy              (toStrict)
 import           GrizigiBildon
 import           Helpi
+import           MalgrandigiBildon
+import           Network.HTTP.Client         (HttpException)
+import           Network.Wreq
+import           Text.HTML.Parser
 
 ekstrakti :: Bool -> Int -> String -> Text -> Text -> IO (Text, Text, Bool)
-ekstrakti porLegilo largxo servo bazaTeksto teksto = 
-    let 
+ekstrakti porLegilo largxo servo bazaTeksto teksto =
+    let
         elementoj = parseTokens teksto
-        havasArtikolon = any (\n -> case n of 
+        havasArtikolon = any (\n -> case n of
                 TagOpen "article" _ -> True
-                _ -> False
+                _                   -> False
             ) elementoj
-        havasTabulon = any (\n -> case n of 
+        havasTabulon = any (\n -> case n of
                 TagOpen "table" _ -> True
-                _ -> False
+                _                 -> False
             ) elementoj
         titolo = strip $ sercxiTitolon False elementoj
     in do
@@ -40,30 +42,30 @@ ekstrakti porLegilo largxo servo bazaTeksto teksto =
 
 sercxiTitolon :: Bool -> [Token] -> Text
 sercxiTitolon _ [] = "sen titolo"
-sercxiTitolon enTitolo (x:xs) = 
-    case x of 
-        TagOpen nomo atributoj -> 
-            case nomo of 
-                "title" -> sercxiTitolon True xs 
-                _ -> sercxiTitolon enTitolo xs
+sercxiTitolon enTitolo (x:xs) =
+    case x of
+        TagOpen nomo atributoj ->
+            case nomo of
+                "title" -> sercxiTitolon True xs
+                _       -> sercxiTitolon enTitolo xs
         TagClose nomo ->
-            case nomo of 
+            case nomo of
                 "title" -> ""
-                _ -> sercxiTitolon False xs
+                _       -> sercxiTitolon False xs
         ContentText teksto ->
             if enTitolo then
                 append teksto $ sercxiTitolon enTitolo xs
-            else 
+            else
                 sercxiTitolon enTitolo xs
         _ -> sercxiTitolon enTitolo xs
-   
+
 
 aliformi :: Bool -> Int -> String -> Text -> [Maybe Token] -> [Token] -> IO Text
 aliformi porLegilo largxo servo bazaTeksto _ [] = return bazaTeksto
-aliformi porLegilo largxo servo bazaTeksto fermoj (x:xs) = 
-    case x of 
-        TagOpen nomo atributoj -> 
-            case nomo of 
+aliformi porLegilo largxo servo bazaTeksto fermoj (x:xs) =
+    case x of
+        TagOpen nomo atributoj ->
+            case nomo of
             "title" -> aliformi porLegilo largxo servo (append bazaTeksto "<h1>") ((Just $ TagClose "title"):fermoj) xs
             "time" -> aliformi porLegilo largxo servo (append bazaTeksto "<i>") ((Just $ TagClose "time"):fermoj) xs
             "article" -> aliformi porLegilo largxo servo bazaTeksto ((Just $ TagClose "article"):fermoj) xs
@@ -93,16 +95,16 @@ aliformi porLegilo largxo servo bazaTeksto fermoj (x:xs) =
             "br" -> aliformi porLegilo largxo servo (append bazaTeksto "<br>") fermoj xs
             _ -> aliformi porLegilo largxo servo bazaTeksto fermoj xs
         TagSelfClose nomo atributoj ->
-            case nomo of 
+            case nomo of
                 "img" -> aliformiBildonKunEraroj atributoj
-                _ -> aliformi porLegilo largxo servo bazaTeksto fermoj xs
-        TagClose nomo -> 
-            case head fermoj of 
+                _     -> aliformi porLegilo largxo servo bazaTeksto fermoj xs
+        TagClose nomo ->
+            case head fermoj of
                 Nothing -> aliformi porLegilo largxo servo bazaTeksto fermoj xs
                 Just token ->
                     case (token, nomo) of
-                        (TagClose "title", "title") -> aliformi porLegilo largxo servo (append bazaTeksto "</h1>") (tail fermoj) xs 
-                        (TagClose "time", "time") -> aliformi porLegilo largxo servo (append bazaTeksto "</i>") (tail fermoj) xs 
+                        (TagClose "title", "title") -> aliformi porLegilo largxo servo (append bazaTeksto "</h1>") (tail fermoj) xs
+                        (TagClose "time", "time") -> aliformi porLegilo largxo servo (append bazaTeksto "</i>") (tail fermoj) xs
                         (TagClose "article", "article") -> aliformi porLegilo largxo servo bazaTeksto (tail fermoj) xs
                         (TagClose "p", "p") -> aliformi porLegilo largxo servo (append bazaTeksto "</p>") (tail fermoj) xs
                         (TagClose "h1", "h1") -> aliformi porLegilo largxo servo (append bazaTeksto "</h1>") (tail fermoj) xs
@@ -128,24 +130,24 @@ aliformi porLegilo largxo servo bazaTeksto fermoj (x:xs) =
                         (TagClose "a", "a") -> aliformi porLegilo largxo servo (append bazaTeksto "</a>") (tail fermoj) xs
                         (_, _) -> aliformi porLegilo largxo servo bazaTeksto fermoj xs
         ContentText teksto ->
-            case head fermoj of 
+            case head fermoj of
                 Nothing -> aliformi porLegilo largxo servo bazaTeksto fermoj xs
                 Just token -> aliformi porLegilo largxo servo (append bazaTeksto teksto) fermoj xs
         ContentChar litero ->
-            case head fermoj of 
+            case head fermoj of
                 Nothing -> aliformi porLegilo largxo servo bazaTeksto fermoj xs
                 Just token -> aliformi porLegilo largxo servo (append bazaTeksto $ singleton litero) fermoj xs
         Comment _ -> aliformi porLegilo largxo servo bazaTeksto fermoj xs
         Doctype _ -> aliformi porLegilo largxo servo bazaTeksto fermoj xs
     where
         sercxiAtributon nomo as = concat $ map (\(Attr atributaNomo valo) -> if unpack atributaNomo == nomo then (unpack valo) else "") as
-        aliformiBildonKunEraroj atributoj = do 
-            rezulto <- try (aliformiBildon atributoj) 
-            case (rezulto :: (Either HttpException Text))  of 
+        aliformiBildonKunEraroj atributoj = do
+            rezulto <- try (aliformiBildon atributoj)
+            case (rezulto :: (Either HttpException Text))  of
                 Left eraro -> aliformi porLegilo largxo servo (append bazaTeksto $ pack $ "<center>"++(show eraro)++"</center><center><i>"++ (sercxiAtributon "alt" atributoj) ++ "</i></center> ") fermoj xs
                 Right bonajxo -> return bonajxo
-        aliformiBildon atributoj = 
-            let 
+        aliformiBildon atributoj =
+            let
                 src = korektiServon servo $ sercxiAtributon "src" atributoj
                 alt = sercxiAtributon "alt" atributoj
             in
@@ -154,20 +156,20 @@ aliformi porLegilo largxo servo bazaTeksto fermoj (x:xs) =
                     case eBildaTeksto of
                         Left mesagxo -> aliformi porLegilo largxo servo (append bazaTeksto $ pack $ "<center>La bildo "++ src ++" ne videblas</center><center><i>"++ alt ++ "</i></center> ") fermoj xs
                         Right bildaTeksto -> aliformi porLegilo largxo servo (append (append (append bazaTeksto (pack "<center><img src=\"data:image/.png;base64,")) bildaTeksto) (pack $ "\"/></center><center><i>"++ alt ++ "</i></center> ")) fermoj xs
-                else 
+                else
                     aliformi porLegilo largxo servo (append bazaTeksto $ pack $ "<center><img src=" ++ src ++ " width=400 /></center><center><i>"++ alt ++ "</i></center> ") fermoj xs
 
-              
-  
+
+
 
 
 filtri :: Bool -> Bool -> [Maybe Token] -> [Token] -> [Token]
 filtri havasArtikolon artikole fermoj [] = []
-filtri havasArtikolon artikole fermoj (x:xs) = 
-    case x of 
-        TagOpen nomo atributoj -> 
+filtri havasArtikolon artikole fermoj (x:xs) =
+    case x of
+        TagOpen nomo atributoj ->
             if neScriptAuxStyle fermoj then
-                case (nomo, havasArtikolon && artikole || not havasArtikolon) of 
+                case (nomo, havasArtikolon && artikole || not havasArtikolon) of
                 ("title", _) -> x : filtri havasArtikolon artikole ((Just $ TagClose "title"):fermoj) xs
                 ("article", _) -> x : filtri havasArtikolon True ((Just $ TagClose "article"):fermoj) xs
                 ("time", True) -> x : filtri havasArtikolon artikole ((Just $ TagClose "time"):fermoj) xs
@@ -193,30 +195,30 @@ filtri havasArtikolon artikole fermoj (x:xs) =
                 ("var", True) -> x: filtri havasArtikolon artikole ((Just $ TagClose "var"):fermoj) xs
                 ("img", True) -> x : filtri havasArtikolon artikole fermoj xs
                 ("br", True) -> x : filtri havasArtikolon artikole fermoj xs
-                _ -> case head fermoj of 
-                    Nothing -> filtri havasArtikolon artikole fermoj xs
+                _ -> case head fermoj of
+                    Nothing    -> filtri havasArtikolon artikole fermoj xs
                     Just token -> x : filtri havasArtikolon artikole fermoj xs
             else filtri havasArtikolon artikole fermoj xs
-        TagSelfClose _ _ -> 
+        TagSelfClose _ _ ->
             if neScriptAuxStyle fermoj then
-                case head fermoj of 
-                    Nothing -> filtri havasArtikolon artikole fermoj xs
+                case head fermoj of
+                    Nothing    -> filtri havasArtikolon artikole fermoj xs
                     Just token -> x : filtri havasArtikolon artikole fermoj xs
             else filtri havasArtikolon artikole fermoj xs
-        TagClose nomo -> 
+        TagClose nomo ->
             if neScriptAuxStyle fermoj then
-                case head fermoj of 
+                case head fermoj of
                     Nothing -> filtri havasArtikolon artikole fermoj xs
                     Just token ->
                         case (token, nomo) of
-                            (TagClose "title", "title") -> x : filtri havasArtikolon artikole (tail fermoj) xs 
-                            (TagClose "article", "article") -> x : filtri havasArtikolon False (tail fermoj) xs 
-                            (TagClose "time", "time") -> x : filtri havasArtikolon artikole (tail fermoj) xs 
-                            (TagClose "p", "p") -> x : filtri havasArtikolon artikole (tail fermoj) xs 
-                            (TagClose "h1", "h1") -> x : filtri havasArtikolon artikole (tail fermoj) xs 
-                            (TagClose "h2", "h2") -> x : filtri havasArtikolon artikole (tail fermoj) xs 
-                            (TagClose "h3", "h3") -> x : filtri havasArtikolon artikole (tail fermoj) xs 
-                            (TagClose "a", "a") -> x : filtri havasArtikolon artikole (tail fermoj) xs 
+                            (TagClose "title", "title") -> x : filtri havasArtikolon artikole (tail fermoj) xs
+                            (TagClose "article", "article") -> x : filtri havasArtikolon False (tail fermoj) xs
+                            (TagClose "time", "time") -> x : filtri havasArtikolon artikole (tail fermoj) xs
+                            (TagClose "p", "p") -> x : filtri havasArtikolon artikole (tail fermoj) xs
+                            (TagClose "h1", "h1") -> x : filtri havasArtikolon artikole (tail fermoj) xs
+                            (TagClose "h2", "h2") -> x : filtri havasArtikolon artikole (tail fermoj) xs
+                            (TagClose "h3", "h3") -> x : filtri havasArtikolon artikole (tail fermoj) xs
+                            (TagClose "a", "a") -> x : filtri havasArtikolon artikole (tail fermoj) xs
                             (TagClose "address", "address") -> x : filtri havasArtikolon artikole (tail fermoj) xs
                             (TagClose "figure", "figure") -> x : filtri havasArtikolon artikole (tail fermoj) xs
                             (TagClose "figcaption", "figcaption") -> x : filtri havasArtikolon artikole (tail fermoj) xs
@@ -231,34 +233,34 @@ filtri havasArtikolon artikole fermoj (x:xs) =
                             (TagClose "samp", "samp") -> x : filtri havasArtikolon artikole (tail fermoj) xs
                             (TagClose "var", "var") -> x : filtri havasArtikolon artikole (tail fermoj) xs
                             _ -> x : filtri havasArtikolon artikole fermoj xs
-            else 
-                case head fermoj of 
+            else
+                case head fermoj of
                     Nothing -> filtri havasArtikolon artikole fermoj xs
                     Just token ->
                         case token of
-                            TagClose "script" -> filtri havasArtikolon artikole (tail fermoj) xs 
-                            TagClose "style" -> filtri havasArtikolon artikole (tail fermoj) xs 
+                            TagClose "script" -> filtri havasArtikolon artikole (tail fermoj) xs
+                            TagClose "style" -> filtri havasArtikolon artikole (tail fermoj) xs
                             _ -> filtri havasArtikolon artikole fermoj xs
         ContentText teksto ->
             if neScriptAuxStyle fermoj then
-                case head fermoj of 
-                    Nothing -> filtri havasArtikolon artikole fermoj xs
+                case head fermoj of
+                    Nothing    -> filtri havasArtikolon artikole fermoj xs
                     Just token -> x : filtri havasArtikolon artikole fermoj xs
             else filtri havasArtikolon artikole fermoj xs
         ContentChar litero ->
             if neScriptAuxStyle fermoj then
-                case head fermoj of 
-                    Nothing -> filtri havasArtikolon artikole fermoj xs
+                case head fermoj of
+                    Nothing    -> filtri havasArtikolon artikole fermoj xs
                     Just token -> x : filtri havasArtikolon artikole fermoj xs
             else filtri havasArtikolon artikole fermoj xs
         Comment _ -> filtri havasArtikolon artikole fermoj xs
         Doctype _ -> filtri havasArtikolon artikole fermoj xs
-    where 
-        neScriptAuxStyle fermoj = 
-            case head fermoj of 
+    where
+        neScriptAuxStyle fermoj =
+            case head fermoj of
                 Just (TagClose "script") -> False
-                Just (TagClose "style") -> False
-                _ -> True
+                Just (TagClose "style")  -> False
+                _                        -> True
 
 
 simpligiRetpagxon :: String -> Bool -> Int -> Bool -> IO (Either String (Text, Text))
@@ -274,24 +276,24 @@ simpligiRetpagxon retpagxo porLegilo largxo babilu = do
                 else do
                     if babilu then putStrLn $ "ekstraktis la ligilo: " ++ retpagxo else return ()
                     return $ Right (titolo, teksto)
-            else 
+            else
                 return $ Left $ "La retpagxo ne legeblas : responsa kodo = " ++ (show $ r ^. responseStatus . statusCode)
         (Nothing, _) -> return $ Left $ "La retpagxo ne havas gxustan servon : " ++ retpagxo
     where
-        tabulon havasTabulon = if havasTabulon then 
-                "<style>table, th, td { border: 1px solid black; border-collapse: collapse; } th, td { padding: 5px; text-align: left; }</style>" 
-            else 
+        tabulon havasTabulon = if havasTabulon then
+                "<style>table, th, td { border: 1px solid black; border-collapse: collapse; } th, td { padding: 5px; text-align: left; }</style>"
+            else
                 ""
 
-    
+
 elsxutiBildon :: String -> Int -> IO (Either String Text)
 elsxutiBildon retBildon largxo = do
-    r <- get retBildon 
+    r <- get retBildon
     if r ^. responseStatus . statusCode == 200 then
-        case decodeImage . B.concat . BL.toChunks $ r ^. responseBody of 
+        case decodeImage . B.concat . BL.toChunks $ r ^. responseBody of
             Right bildon -> return $ Right $ toStrict $ encodeBase64 . encodePng . grizigi $ malgrandi bildon largxo
             Left mesagxo -> return $ Left $ "La retbildo ne legeblas : " ++ mesagxo
-    else 
+    else
         return $ Left $ "La retbildo ne legeblas : responsa kodo = " ++ (show $ r ^. responseStatus . statusCode)
 
 

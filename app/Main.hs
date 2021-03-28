@@ -2,30 +2,32 @@
 
 module Main where
 
-import qualified Data.Text.IO                  as T     (putStrLn, writeFile) -- ?
-import           Data.Text                              (Text, append, unpack, pack, dropEnd)
-import qualified Simpligi                      as S     (simpligiRetpagxon)
+import           Alklaki
+import           Control.Exception
+import           Control.Monad
+import qualified Data.ByteString       as B
+import qualified Data.ByteString.Lazy  as BL
 import           Data.List
-import qualified Data.ByteString.Lazy          as BL
-import qualified Data.ByteString               as B
+import           Data.Text             (Text, append, dropEnd, pack, unpack)
+import qualified Data.Text.IO          as T (putStrLn, writeFile)
+import qualified Fluo                  as F (legiFluon)
+import qualified Fluoj                 as FJ (Fluo, Fluoj, aldoni, kodiFluojn,
+                                              kreiFluojn, kreiFluon,
+                                              malkodiFluojn, novajnRetpagxojn)
+import           Helpi
+import           Retposxto
+import qualified Simpligi              as S (simpligiRetpagxon)
 import           System.Console.GetOpt
-import           System.Directory 
+import           System.Directory
 import           System.Environment
 import           System.Exit
 import           System.IO
-import           Control.Exception
-import           Control.Monad
 import           Text.Read
 import           Versio
-import           Retposxto
-import qualified Fluo                          as F     (legiFluon)
-import qualified Fluoj                         as FJ    (kreiFluon, kreiFluojn, Fluo, Fluoj, malkodiFluojn, kodiFluojn, aldoni, novajnRetpagxojn)
-import           Helpi
-import           Alklaki
 
-retposxtaServo = "SMTP_SERVER"
-retposxtaSalutnomo = "SMTP_LOGIN"
-retposxtaPasvorto = "SMTP_PASSWORD"
+retposxtaServo = "SMTP_SERVO"
+retposxtaSalutnomo = "SMTP_SALUTNOMO"
+retposxtaPasvorto = "SMTP_PASVORTO"
 
 data Flag
         = Legilo                -- -l --legilo
@@ -61,7 +63,7 @@ parse prgNomo argv = case getOpt Permute flagoj argv of
             if Help `elem` args
             then do hPutStrLn stderr (usageInfo (header prgNomo) flagoj)
                     exitWith ExitSuccess
-            else if Versio `elem` args 
+            else if Versio `elem` args
             then do hPutStrLn stdout (prgNomo ++ " " ++ Versio.versio)
                     exitWith ExitSuccess
             else return (nub args, words)
@@ -74,50 +76,50 @@ parse prgNomo argv = case getOpt Permute flagoj argv of
 
 sercxiFlago :: (Flag -> Maybe a) -> [Flag] -> Maybe a
 sercxiFlago f [] = Nothing
-sercxiFlago f (flago:flagoj) = 
-    case f flago of 
-        Just s -> Just s 
+sercxiFlago f (flago:flagoj) =
+    case f flago of
+        Just s  -> Just s
         Nothing -> sercxiFlago f flagoj
 
-sercxiDosierejo :: Int -> [Flag] -> Int 
-sercxiDosierejo defauxlto flagoj = 
-        case dosierejoDemandon flagoj of 
-            Just v -> if v < 1 then defauxlto else v
+sercxiDosierejo :: Int -> [Flag] -> Int
+sercxiDosierejo defauxlto flagoj =
+        case dosierejoDemandon flagoj of
+            Just v  -> if v < 1 then defauxlto else v
             Nothing -> defauxlto
 
 
-sercxiLargxo :: Int -> [Flag] -> Int 
-sercxiLargxo defauxlto flagoj = 
-    let 
-        valoro = sercxiFlago (\n -> case n of 
-                        Largxo v -> readMaybe v   
-                        _ -> Nothing ) flagoj
+sercxiLargxo :: Int -> [Flag] -> Int
+sercxiLargxo defauxlto flagoj =
+    let
+        valoro = sercxiFlago (\n -> case n of
+                        Largxo v -> readMaybe v
+                        _        -> Nothing ) flagoj
     in
-        case valoro of 
-            Just v -> if v < 10 then defauxlto else v
+        case valoro of
+            Just v  -> if v < 10 then defauxlto else v
             Nothing -> defauxlto
 
 sercxiRetadreso :: [Flag] -> Maybe String
-sercxiRetadreso = sercxiFlago (\n -> case n of 
+sercxiRetadreso = sercxiFlago (\n -> case n of
                         Retadreso v -> Just v
-                        _ -> Nothing ) 
+                        _           -> Nothing )
 
 dosierejoDemandon :: [Flag] -> Maybe Int
-dosierejoDemandon = sercxiFlago (\n -> case n of 
+dosierejoDemandon = sercxiFlago (\n -> case n of
                         Dosierejo v -> readMaybe v
-                        _ -> Nothing )
+                        _           -> Nothing )
 
 seDosierejoDemandon :: [Flag] -> Bool
 seDosierejoDemandon flagoj = dosierejoDemandon flagoj /= Nothing
 
 devasBabili :: [Flag] -> Bool
-devasBabili = elem Babili 
+devasBabili = elem Babili
 
 fluaDemandon :: [Flag] -> Bool
-fluaDemandon = elem Fluo 
+fluaDemandon = elem Fluo
 
 kindleDemandon :: [Flag] -> Bool
-kindleDemandon = elem Kindle 
+kindleDemandon = elem Kindle
 
 
 fariDosiero :: Maybe ([Flag], Text, Text) -> IO (Maybe ([Flag], Text, Text))
@@ -126,13 +128,13 @@ fariDosiero (Just (args, titolo, teksto)) =
     if (Dosiero `elem` args) then do
         nomo <- return $ (korekti titolo) ++ ".html"
         T.writeFile (nomo) teksto
-        putStrLn $ "skribus diskingen " ++ nomo 
+        putStrLn $ "skribus diskingen " ++ nomo
         return $ Just (args, titolo, teksto)
-    else 
-        case sercxiRetadreso args of 
+    else
+        case sercxiRetadreso args of
             Just _ -> return $ Just (args, titolo, teksto)
-            Nothing -> do 
-                T.putStrLn teksto 
+            Nothing -> do
+                T.putStrLn teksto
                 return Nothing
 
 sercxiRetposxto :: IO (Maybe (String, String, String))
@@ -140,25 +142,27 @@ sercxiRetposxto = do
     mbRetposxtaServo <- lookupEnv retposxtaServo
     mbRetposxtaSalutnomo <- lookupEnv retposxtaSalutnomo
     mbRetposxtaPasvorto <- lookupEnv retposxtaPasvorto
-    case (mbRetposxtaServo, mbRetposxtaSalutnomo, mbRetposxtaPasvorto) of 
+    case (mbRetposxtaServo, mbRetposxtaSalutnomo, mbRetposxtaPasvorto) of
         (Just servo, Just salutnomo, Just pasvorto) -> return $ Just $ (servo, salutnomo, pasvorto)
-        _ -> return $ Nothing
+        _ -> do
+          putStrLn $ "Vi devu krei mediajn parametrojn "++ retposxtaServo ++", "++ retposxtaSalutnomo  ++" kaj "++ retposxtaPasvorto  ++"."
+          return $ Nothing
 
 elsendiMajlojn :: [Flag] -> [String] -> IO ()
 elsendiMajlojn args retpagxojn = do
-    mbDokumentoj <- mapM (simpligiRetpagxon args) retpagxojn          
+    mbDokumentoj <- mapM (simpligiRetpagxon args) retpagxojn
     mbRetposxto <- sercxiRetposxto
     case (sercxiRetadreso args, mbRetposxto) of
-        (Nothing, _) -> return ()
         (Just retadreso, Just retposxto) -> do
             dokumentoj <- return $ map (\mb -> case mb of
                 Nothing -> ("", "") -- neniam
-                Just v -> v
+                Just v  -> v
                 ) $ filter (\mb -> case mb of
                         Nothing -> False
-                        Just _ -> True
+                        Just _  -> True
                     ) mbDokumentoj
-            sendiMajlojn retposxto retadreso dokumentoj (Legilo `elem` args) (devasBabili args) 
+            sendiMajlojn retposxto retadreso dokumentoj (Legilo `elem` args) (devasBabili args)
+        _ -> return ()
 
 sercxiDosierojnHTML :: [FilePath] -> [FilePath]
 sercxiDosierojnHTML dosieroj =
@@ -178,35 +182,35 @@ sercxiDosierojn kvantoDeDosiero = do
 
 elsendiMajlojnElDosierejo :: [Flag] -> IO ()
 elsendiMajlojnElDosierejo args  = do
-    dokumentoj <- sercxiDosierojn $ sercxiDosierejo 10 args          
+    dokumentoj <- sercxiDosierojn $ sercxiDosierejo 10 args
     mbRetposxto <- sercxiRetposxto
     case (sercxiRetadreso args, mbRetposxto) of
         (Just retadreso, Just retposxto) -> do
             sendiMajlojn retposxto retadreso dokumentoj (Legilo `elem` args) (devasBabili args)
             seSkribu (devasBabili args) "Forviŝas dosierojn"
-            mapM (\n -> do 
+            mapM (\n -> do
                 dokumento <- pure $ unpack . fst $ n
                 removeFile $ dokumento ++ ".html"
-                seSkribu (devasBabili args) $ " « "++dokumento++" » forviŝita." ) dokumentoj 
+                seSkribu (devasBabili args) $ " « "++dokumento++" » forviŝita." ) dokumentoj
             return ()
         _ -> return ()
 
 simpligiRetpagxon :: [Flag] -> String -> IO (Maybe (Text, Text))
-simpligiRetpagxon args retpagxo = do 
+simpligiRetpagxon args retpagxo = do
     retpagxoSimpligita <- S.simpligiRetpagxon retpagxo (Legilo `elem` args) (sercxiLargxo 400 args) (devasBabili args)
-    case retpagxoSimpligita of 
-        Left mesagxo -> do 
+    case retpagxoSimpligita of
+        Left mesagxo -> do
             putStrLn mesagxo
             return $ Nothing
-        Right (titolo, teksto) -> do 
-            fariDosiero (Just (args, titolo, teksto)) 
+        Right (titolo, teksto) -> do
+            fariDosiero (Just (args, titolo, teksto))
             return (Just (titolo, teksto))
 
 legiFluon :: [Flag] -> String -> IO FJ.Fluo
 legiFluon args fluo = do
     babilu <- return $ devasBabili args
     retpagxojn <- F.legiFluon fluo babilu
-    if babilu then do 
+    if babilu then do
         mapM putStrLn retpagxojn
         return ()
     else return ()
@@ -217,19 +221,19 @@ legiMalnovajnFluojn = do
     eBytes <- try $ B.readFile "fluoj.json"
     case (eBytes :: (Either SomeException B.ByteString)) of
         Right fluoj -> return $ FJ.malkodiFluojn $ BL.fromStrict fluoj
-        Left eraro -> return $ FJ.kreiFluojn []
+        Left eraro  -> return $ FJ.kreiFluojn []
 
 main :: IO ()
 main = do
     prgNomo <- getProgName
     (args, ligiloj) <- getArgs >>= parse prgNomo
     if null ligiloj then do
-        if seDosierejoDemandon args then do 
+        if seDosierejoDemandon args then do
             elsendiMajlojnElDosierejo args
         else if fluaDemandon args then do
             malnovajFluoj <- legiMalnovajnFluojn
             (retpagxojn, novajFluoj) <- FJ.novajnRetpagxojn malnovajFluoj
-            if (devasBabili args) then do 
+            if (devasBabili args) then do
                 seSkribu True $ "Nova(j) retpagxo(j) "++ (show $ length retpagxojn)
                 mapM putStrLn retpagxojn
                 return ()
@@ -240,30 +244,30 @@ main = do
                 Right () -> do
                     seSkribu (devasBabili args) "savi la stato de la fluojn"
                     BL.writeFile "fluoj.json" $ FJ.kodiFluojn novajFluoj
-                Left eraro -> do 
-                    putStrLn $ show eraro          
+                Left eraro -> do
+                    putStrLn $ show eraro
         else do
             putStrLn "Vi donu retpaĝojn aǔ fluoligilojn."
     else
         if fluaDemandon args then do
-            fluoj <- mapM (legiFluon args) ligiloj            
+            fluoj <- mapM (legiFluon args) ligiloj
             novajFluoj <- return $ FJ.kreiFluojn fluoj
             malnovajFluoj <- legiMalnovajnFluojn
             (kf, l) <- return $ FJ.aldoni malnovajFluoj novajFluoj
             BL.writeFile "fluoj.json" $ FJ.kodiFluojn kf
             seSkribu (devasBabili args) $ "Aldoni "++ (show l) ++ " fluo(j)n."
         else do
-            elsendiMajlojn args ligiloj       
+            elsendiMajlojn args ligiloj
     if kindleDemandon args then
         alklakiKindle
-    else 
+    else
         return ()
-            
+
 
 alklakiKindle :: IO ()
 alklakiKindle = do
     mbRetposxto <- sercxiRetposxto
     case mbRetposxto of
-        Nothing -> return ()
+        Nothing        -> return ()
         Just retposxto -> alklakiKontrolon retposxto
 

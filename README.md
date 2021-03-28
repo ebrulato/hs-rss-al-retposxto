@@ -4,7 +4,7 @@
 
 La celo de tiu projekto estas la kreado de ilo kiu povas ekstrakti retpaĝojn kaj simpligi ilin.
 Ĉi tiu ilo eblas elsendi ilin retpoŝten, tiel ke vi povas legi viajn ŝatitajn blogojn facile en via majllegilo. 
-Se vi volas vi povas inkluzivi la bildojn en la artikoloj kaj elsendi la majlojn al via ŝatita legilo tiel la Kindle.
+Se vi volas vi povas inkluzivi la bildojn en la artikoloj kaj elsendi la majlojn al via ŝatita legilo tiel Kindle.
 
 > $> stack build
 
@@ -15,11 +15,12 @@ Se vi volas vi povas inkluzivi la bildojn en la artikoloj kaj elsendi la majlojn
 - simpligi retpaĝojn
 - surdiskigi simpligitajn retpaĝojn
 - elsendi simpligitjan retpaĝojn majlen
-- uzi TLS servo kiel gmx.com
+- uzi TLS servo kiel gmx.com por elsendi la majlojn
 - la nomo de la dosiero en la majloj korektitas, sed ĉi tiu majlsistemo uzas nur usonajn signojn.
 - uzi la surdiskigitajn retpaĝojn en la majloj.
 - uzi RSS2
 - uzi Mediun
+- uzi simplan blogon 
 
 ## kion mi devas korekti
 
