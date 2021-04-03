@@ -28,6 +28,10 @@ Se vi volas vi povas inkluzivi la bildojn en la artikoloj kaj elsendi la majlojn
 - se la ligiloj estas en CDATA, la ilo ne povas uzi korekte ilin.
 - mi ne povas uzi HaskellNet-SSL ;( 
 
+## Kodplibonigo
+
+- mi simpligis la uzadon de la parametroj
+
 ## la bazoj de la projekto
 
 Mi lernas kiel funkcias : 
