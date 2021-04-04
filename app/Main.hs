@@ -69,152 +69,119 @@ parse prgNomo argv = case getOpt Permute flagoj argv of
             hPutStrLn stderr (concat errs ++ usageInfo (header prgNomo) flagoj)
             exitWith (ExitFailure 1)
 
-        where header prgName = "Uzado: "++ prgNomo ++ " [-ldfkhvb] <retpaĝojn aǔ fluoligilon> \n\n"
+        where header prgName = "Uzado: "++ prgNomo ++ " [-bdfhlv] <retpaĝojn aǔ fluoligilon> \n\n"
 
 
-fariDosiero :: Bool -> Maybe String -> Text -> Text -> IO (Maybe (Text, Text))
-fariDosiero faruDosieron mbRetadreso titolo teksto =
-    if faruDosieron then do
-        nomo <- return $ (korekti titolo) ++ ".html"
-        T.writeFile (nomo) teksto
-        putStrLn $ "skribus diskingen " ++ nomo
-        return $ Just (titolo, teksto)
-    else
-        case mbRetadreso of
-            Just _ -> return $ Just (titolo, teksto)
-            Nothing -> do
-                T.putStrLn teksto
-                return Nothing
+type Retadreso = String
+type Ligilo = String
+type Babili = Bool
+type PorLegilo = Bool
+type BildLargxo = Int
+type Titolo = Text
+type Teksto = Text
+type Fluojn = FJ.Fluoj
+type Farita = Bool
+type FariDosiero = Bool
+type FluaDemando = Bool
+type DosierejoDemando = Bool
 
-sercxiRetposxto :: IO (Maybe (String, String, String))
-sercxiRetposxto = do
-    mbRetposxtaServo <- lookupEnv retposxtaServo
-    mbRetposxtaSalutnomo <- lookupEnv retposxtaSalutnomo
-    mbRetposxtaPasvorto <- lookupEnv retposxtaPasvorto
-    case (mbRetposxtaServo, mbRetposxtaSalutnomo, mbRetposxtaPasvorto) of
-        (Just servo, Just salutnomo, Just pasvorto) -> return $ Just $ (servo, salutnomo, pasvorto)
-        _ -> do
-          putStrLn $ "Vi devu krei mediajn parametrojn "++ retposxtaServo ++", "++ retposxtaSalutnomo  ++" kaj "++ retposxtaPasvorto  ++"."
-          return $ Nothing
+data RSSalRetposxtoProgramo a
+  = HavigiParametrojn [Flag] [Ligilo] (Babili -> Maybe Retadreso -> PorLegilo -> BildLargxo -> Int -> FariDosiero -> FluaDemando -> DosierejoDemando -> [Ligilo] -> RSSalRetposxtoProgramo a)
+  | AldoniFluojn [Ligilo] Babili (RSSalRetposxtoProgramo a)
+  | LegiFluojn Babili PorLegilo BildLargxo ([(Titolo, Teksto)] -> Fluojn -> RSSalRetposxtoProgramo a)
+  | LegiFluojnElLigilojn [Ligilo] Babili PorLegilo BildLargxo ([(Titolo, Teksto)] -> RSSalRetposxtoProgramo a)
+  | LegiFluojnElDosierejo Babili Int ([(Titolo, Teksto)] -> RSSalRetposxtoProgramo a)
+  | ElsendiMajlon Retadreso Babili PorLegilo [(Titolo, Teksto)] (Farita -> RSSalRetposxtoProgramo a)
+  | AfisxiDosierojn Babili [(Titolo, Teksto)] (RSSalRetposxtoProgramo a)
+  | SkribiDosierojn Babili [(Titolo, Teksto)] (RSSalRetposxtoProgramo a)
+  | SkribiFluojn Fluojn Babili (RSSalRetposxtoProgramo a)
+  | MalAperigiDosierojn [Titolo] Babili (RSSalRetposxtoProgramo a)
+  | NeParametron a
+  | Fino a
 
-elsendiMajlojn :: Bool -> Bool -> Int -> Bool -> Maybe String -> [String] -> IO ()
-elsendiMajlojn babilu porLegilo bildLargxo faruDosieron mbRetadreso retpagxojn = do
-    mbDokumentoj <- mapM (simpligiRetpagxon porLegilo babilu bildLargxo faruDosieron mbRetadreso) retpagxojn
-    mbRetposxto <- sercxiRetposxto
-    case (mbRetadreso, mbRetposxto) of
-        (Just retadreso, Just retposxto) -> do
-            dokumentoj <- return $ map (\mb -> case mb of
-                Nothing -> ("", "") -- neniam
-                Just v  -> v
-                ) $ filter (\mb -> case mb of
-                        Nothing -> False
-                        Just _  -> True
-                    ) mbDokumentoj
-            sendiMajlojn retposxto retadreso dokumentoj porLegilo babilu
-        _ -> return ()
+interpreti :: RSSalRetposxtoProgramo a -> IO a
 
-sercxiDosierojnHTML :: [FilePath] -> [FilePath]
-sercxiDosierojnHTML dosieroj =
-    filter (\n -> isSuffixOf ".html" n) dosieroj
+interpreti (Fino a) = pure a
 
-sercxiDosieron :: FilePath -> IO (Text, Text)
-sercxiDosieron fp = do
-    datumoj <- readFile fp
-    return $ (dropEnd 5 $ pack fp, pack datumoj)
+interpreti (NeParametron a) = do
+  putStrLn "Vi donu retpaĝojn aǔ fluoligilojn."
+  interpreti (Fino a)
 
-sercxiDosierojn :: Int -> IO ([(Text, Text)])
-sercxiDosierojn kvantoDeDosiero = do
-    tie <- getCurrentDirectory
-    cxioj <- listDirectory tie
-    cxiojHtml <- pure $ sercxiDosierojnHTML cxioj
-    mapM sercxiDosieron $ take kvantoDeDosiero cxiojHtml
+interpreti (HavigiParametrojn args ligiloj sekvo) = do
+  babilu <- return $ Babili `elem` args
+  porLegilo <- return $ Legilo `elem` args
+  bildLargxo <- return $ sercxiLargxo 400 args
+  kvantoDeDosiero <- return $ sercxiDosierejo 10 args
+  mbRetadreso <- return $ sercxiRetadreso args
+  faruDosiero <- return $ Dosiero `elem` args
+  fluaDemando <- return $ Fluo `elem` args
+  dosierejoDemando <- return $ dosierejoDemandon args /= Nothing
+  interpreti (sekvo babilu mbRetadreso porLegilo bildLargxo kvantoDeDosiero faruDosiero fluaDemando dosierejoDemando ligiloj)
 
-elsendiMajlojnElDosierejo :: Bool -> Bool -> Int -> Maybe String -> IO ()
-elsendiMajlojnElDosierejo babilu porLegilo kvantoDeDosiero mbRetadreso = do
-    dokumentoj <- sercxiDosierojn kvantoDeDosiero
-    mbRetposxto <- sercxiRetposxto
-    case (mbRetadreso, mbRetposxto) of
-        (Just retadreso, Just retposxto) -> do
-            sendiMajlojn retposxto retadreso dokumentoj porLegilo babilu
-            mapM (\n -> do
-                dokumento <- pure $ unpack . fst $ n
-                removeFile $ dokumento ++ ".html"
-                seSkribu babilu $ " « " ++ dokumento ++ " » forviŝita." ) dokumentoj
-            return ()
-        _ -> return ()
+interpreti (AldoniFluojn ligiloj babilu sekvo) = do
+  fluoj <- mapM (legiFluon babilu) ligiloj
+  novajFluoj <- return $ FJ.kreiFluojn fluoj
+  malnovajFluoj <- legiMalnovajnFluojn
+  (kf, l) <- return $ FJ.aldoni malnovajFluoj novajFluoj
+  BL.writeFile "fluoj.json" $ FJ.kodiFluojn kf
+  seSkribu babilu $ "Aldoni "++ (show l) ++ " fluo(j)n."
+  interpreti sekvo
 
-simpligiRetpagxon :: Bool -> Bool -> Int -> Bool -> Maybe String -> String -> IO (Maybe (Text, Text))
-simpligiRetpagxon porLegilo babilu bildLargxo faruDosiero mbRetadreso retpagxo = do
-    retpagxoSimpligita <- S.simpligiRetpagxon retpagxo porLegilo bildLargxo babilu
-    case retpagxoSimpligita of
-        Left mesagxo -> do
-            putStrLn mesagxo
-            return $ Nothing
-        Right (titolo, teksto) -> do
-            fariDosiero faruDosiero mbRetadreso titolo teksto
+interpreti (LegiFluojn babilu porLegilo bildLargxo sekvo) = do
+  malnovajFluoj <- legiMalnovajnFluojn
+  (retpagxojn, novajFluoj) <- FJ.novajnRetpagxojn malnovajFluoj
+  seSkribu babilu ("Nova(j) retpagxo(j) "++ (show $ length retpagxojn))
+  mapM (seSkribu babilu) retpagxojn
+  dokumentoj <- simpligiRetpagxojn babilu porLegilo bildLargxo retpagxojn
+  interpreti (sekvo dokumentoj novajFluoj)
 
-legiFluon :: Bool -> String -> IO FJ.Fluo
-legiFluon babilu fluo = do
-    retpagxojn <- F.legiFluon fluo babilu
-    if babilu then do
-        mapM putStrLn retpagxojn
-        return ()
-    else return ()
-    return $ FJ.kreiFluon fluo retpagxojn
+interpreti (LegiFluojnElLigilojn ligilojn babilu porLegilo bildLargxo sekvo) = do
+  dokumentoj <- simpligiRetpagxojn babilu porLegilo bildLargxo ligilojn
+  interpreti (sekvo dokumentoj)
 
-legiMalnovajnFluojn :: IO FJ.Fluoj
-legiMalnovajnFluojn = do
-    eBytes <- try $ B.readFile "fluoj.json"
-    case (eBytes :: (Either SomeException B.ByteString)) of
-        Right fluoj -> return $ FJ.malkodiFluojn $ BL.fromStrict fluoj
-        Left eraro  -> return $ FJ.kreiFluojn []
+interpreti (LegiFluojnElDosierejo babilu kvantoDeDosiero sekvo) = do
+  dokumentoj <- sercxiDosierojn babilu kvantoDeDosiero
+  interpreti (sekvo dokumentoj)
 
-main :: IO ()
-main = do
-    prgNomo <- getProgName
-    (args, ligiloj) <- getArgs >>= parse prgNomo
+interpreti (ElsendiMajlon retadreso babilu porLegilo dokumentoj sekvo) = do
+  mbRetposxto <- sercxiRetposxto
+  case mbRetposxto of
+    Just retposxto -> do
+      rezulto <- try $ sendiMajlojn retposxto retadreso dokumentoj porLegilo babilu
+      case (rezulto :: (Either SomeException ())) of
+        Right () ->
+          interpreti (sekvo True)
+        Left eraro -> do
+          putStrLn $ show eraro
+          interpreti (sekvo False)
+    Nothing ->
+      interpreti (sekvo False)
 
-    babilu <- return $ Babili `elem` args
-    porLegilo <- return $ Legilo `elem` args
-    bildLargxo <- return $ sercxiLargxo 400 args
-    kvantoDeDosiero <- return $ sercxiDosierejo 10 args
-    mbRetadreso <- return $ sercxiRetadreso args
-    faruDosiero <- return $ Dosiero `elem` args
-    fluaDemando <- return $ Fluo `elem` args
-    dosierejoDemando <- return $ dosierejoDemandon args /= Nothing
+interpreti (AfisxiDosierojn babilu dokumentoj sekvo) = do
+  mapM (\(titolo, teksto) -> do
+           seSkribu babilu $ unpack teksto
+          ) dokumentoj
+  interpreti sekvo
 
-    if null ligiloj then do
-        if dosierejoDemando then do
-            elsendiMajlojnElDosierejo babilu porLegilo kvantoDeDosiero mbRetadreso
-        else if fluaDemando then do
-            malnovajFluoj <- legiMalnovajnFluojn
-            (retpagxojn, novajFluoj) <- FJ.novajnRetpagxojn malnovajFluoj
-            if babilu then do
-                seSkribu True $ "Nova(j) retpagxo(j) "++ (show $ length retpagxojn)
-                mapM putStrLn retpagxojn
-                return ()
-            else
-                return ()
-            rezulto <- try $ elsendiMajlojn babilu porLegilo bildLargxo faruDosiero mbRetadreso retpagxojn
-            case (rezulto :: (Either SomeException ())) of
-                Right () -> do
-                    seSkribu babilu "savi la stato de la fluojn"
-                    BL.writeFile "fluoj.json" $ FJ.kodiFluojn novajFluoj
-                Left eraro -> do
-                    putStrLn $ show eraro
-        else do
-            putStrLn "Vi donu retpaĝojn aǔ fluoligilojn."
-    else
-        if fluaDemando then do
-            fluoj <- mapM (legiFluon babilu) ligiloj
-            novajFluoj <- return $ FJ.kreiFluojn fluoj
-            malnovajFluoj <- legiMalnovajnFluojn
-            (kf, l) <- return $ FJ.aldoni malnovajFluoj novajFluoj
-            BL.writeFile "fluoj.json" $ FJ.kodiFluojn kf
-            seSkribu babilu $ "Aldoni "++ (show l) ++ " fluo(j)n."
-        else do
-            elsendiMajlojn babilu porLegilo bildLargxo faruDosiero mbRetadreso ligiloj
-    return ()
+interpreti (SkribiDosierojn babilu dokumentoj sekvo) = do
+  mapM (\(titolo, teksto) -> do
+            nomo <- return $ (korekti titolo) ++ ".html"
+            T.writeFile (nomo) teksto
+            seSkribu babilu $ "skribus diskingen " ++ nomo
+          ) dokumentoj
+  interpreti sekvo
+
+interpreti (SkribiFluojn fluojn babilu sekvo) = do
+  seSkribu babilu "savi la stato de la fluojn"
+  BL.writeFile "fluoj.json" $ FJ.kodiFluojn fluojn
+  interpreti sekvo
+
+interpreti (MalAperigiDosierojn titoloj babilu sekvo) = do
+  mapM (\titolo -> do
+           dokumento <- pure $ unpack titolo
+           removeFile $ dokumento ++ ".html"
+           seSkribu babilu $ " « " ++ dokumento ++ " » forviŝita." ) titoloj
+  interpreti sekvo
 
 
 sercxiFlago :: (Flag -> Maybe a) -> [Flag] -> Maybe a
@@ -251,6 +218,139 @@ dosierejoDemandon :: [Flag] -> Maybe Int
 dosierejoDemandon = sercxiFlago (\n -> case n of
                         Dosierejo v -> readMaybe v
                         _           -> Nothing )
+
+legiFluon :: Bool -> String -> IO FJ.Fluo
+legiFluon babilu fluo = do
+    retpagxojn <- F.legiFluon fluo babilu
+    if babilu then do
+        mapM putStrLn retpagxojn
+        return ()
+    else return ()
+    return $ FJ.kreiFluon fluo retpagxojn
+
+legiMalnovajnFluojn :: IO FJ.Fluoj
+legiMalnovajnFluojn = do
+    eBytes <- try $ B.readFile "fluoj.json"
+    case (eBytes :: (Either SomeException B.ByteString)) of
+        Right fluoj -> return $ FJ.malkodiFluojn $ BL.fromStrict fluoj
+        Left eraro  -> return $ FJ.kreiFluojn []
+
+
+simpligiRetpagxojn :: Babili -> PorLegilo -> BildLargxo -> [Ligilo] -> IO ([(Titolo, Teksto)])
+simpligiRetpagxojn babilu porLegilo bildLargxo retpagxojn = do
+    mbDokumentoj <- mapM (simpligiRetpagxon porLegilo babilu bildLargxo) retpagxojn
+    dokumentoj <- return $ map (\mb -> case mb of
+                Nothing -> ("", "") -- neniam
+                Just v  -> v
+                ) $ filter (\mb -> case mb of
+                        Nothing -> False
+                        Just _  -> True
+                    ) mbDokumentoj
+    return $ dokumentoj
+
+simpligiRetpagxon :: PorLegilo -> Babili -> BildLargxo -> Ligilo -> IO (Maybe (Titolo, Teksto))
+simpligiRetpagxon porLegilo babilu bildLargxo retpagxo = do
+    retpagxoSimpligita <- S.simpligiRetpagxon retpagxo porLegilo bildLargxo babilu
+    case retpagxoSimpligita of
+        Left mesagxo -> do
+            putStrLn mesagxo
+            return $ Nothing
+        Right (titolo, teksto) -> do
+            return $ Just (titolo, teksto)
+
+sercxiDosieron :: FilePath -> IO (Titolo, Teksto)
+sercxiDosieron fp = do
+    datumoj <- readFile fp
+    return $ (dropEnd 5 $ pack fp, pack datumoj)
+
+sercxiDosierojn :: Babili -> Int -> IO ([(Titolo, Teksto)])
+sercxiDosierojn babilu kvantoDeDosiero = do
+    tie <- getCurrentDirectory
+    seSkribu babilu $ tie
+    cxioj <- listDirectory tie
+    cxiojHtml <- pure $ filter (\n -> isSuffixOf ".html" n) cxioj
+    mapM sercxiDosieron $ take kvantoDeDosiero cxiojHtml
+
+
+sercxiRetposxto :: IO (Maybe (String, String, String))
+sercxiRetposxto = do
+    mbRetposxtaServo <- lookupEnv retposxtaServo
+    mbRetposxtaSalutnomo <- lookupEnv retposxtaSalutnomo
+    mbRetposxtaPasvorto <- lookupEnv retposxtaPasvorto
+    case (mbRetposxtaServo, mbRetposxtaSalutnomo, mbRetposxtaPasvorto) of
+        (Just servo, Just salutnomo, Just pasvorto) -> return $ Just $ (servo, salutnomo, pasvorto)
+        _ -> do
+          putStrLn $ "Vi devu krei mediajn parametrojn "++ retposxtaServo ++", "++ retposxtaSalutnomo  ++" kaj "++ retposxtaPasvorto  ++"."
+          return $ Nothing
+
+
+havigiParametrojnProgramo :: Babili -> Maybe Retadreso -> PorLegilo -> BildLargxo -> Int -> FariDosiero -> FluaDemando -> DosierejoDemando -> [Ligilo] -> RSSalRetposxtoProgramo ()
+havigiParametrojnProgramo babilu mbRetadreso porLegilo bildLargxo kvantoDeDosiero faruDosiero fluaDemando dosierejoDemando ligiloj =
+  case (null ligiloj, fluaDemando, dosierejoDemando) of
+    (True, True, False) ->
+      if faruDosiero then
+        LegiFluojn babilu porLegilo bildLargxo (devuSkribiDosierojnElFluojnProgramo babilu (majluDokumentojnElFluojnProgramo mbRetadreso babilu porLegilo True (skribuFluojnProgramo babilu)))
+      else LegiFluojn babilu porLegilo bildLargxo (majluDokumentojnElFluojnProgramo mbRetadreso babilu porLegilo False (skribuFluojnProgramo babilu))
+    (True, False, True) -> LegiFluojnElDosierejo babilu kvantoDeDosiero (majluDokumentojnProgramo mbRetadreso babilu porLegilo (malAperiguDosierojnProgramo babilu))
+    (True, False, False) -> NeParametron ()
+    (False, True, _) -> AldoniFluojn ligiloj babilu (Fino ())
+    (False, False, _) ->
+      if faruDosiero then
+        LegiFluojnElLigilojn ligiloj babilu porLegilo bildLargxo (devuSkribiDosierojnProgramo babilu (majluDokumentojnProgramo mbRetadreso babilu porLegilo (finiguProgramo babilu)))
+      else LegiFluojnElLigilojn ligiloj babilu porLegilo bildLargxo (devuAfisxiDosierojnProgramo babilu (majluDokumentojnProgramo mbRetadreso babilu porLegilo (finiguProgramo babilu)))
+    _ -> Fino ()
+
+
+devuSkribiDosierojnProgramo :: Babili -> ([(Titolo, Teksto)] -> RSSalRetposxtoProgramo ()) -> [(Titolo, Teksto)] -> RSSalRetposxtoProgramo ()
+devuSkribiDosierojnProgramo babilu sekvo dokumentoj =
+  SkribiDosierojn babilu dokumentoj (sekvo dokumentoj)
+
+devuAfisxiDosierojnProgramo :: Babili -> ([(Titolo, Teksto)] -> RSSalRetposxtoProgramo ()) -> [(Titolo, Teksto)] -> RSSalRetposxtoProgramo ()
+devuAfisxiDosierojnProgramo babilu sekvo dokumentoj =
+  AfisxiDosierojn babilu dokumentoj (sekvo dokumentoj)
+
+majluDokumentojnProgramo :: Maybe Retadreso -> Babili -> PorLegilo -> ([(Titolo, Teksto)] -> Farita -> RSSalRetposxtoProgramo ()) -> [(Titolo, Teksto)] -> RSSalRetposxtoProgramo ()
+majluDokumentojnProgramo mbRetadreso babilu porLegilo sekvo dokumentoj =
+  case mbRetadreso of
+    Just retadreso -> ElsendiMajlon retadreso babilu porLegilo dokumentoj (sekvo dokumentoj)
+    Nothing        -> sekvo dokumentoj False
+
+finiguProgramo :: Babili -> [(Titolo, Teksto)] -> Farita -> RSSalRetposxtoProgramo ()
+finiguProgramo _ _ _ = Fino ()
+
+malAperiguDosierojnProgramo :: Babili -> [(Titolo, Teksto)] -> Farita -> RSSalRetposxtoProgramo ()
+malAperiguDosierojnProgramo babilu dokumentoj farita =
+  if farita then MalAperigiDosierojn (map fst dokumentoj) babilu (Fino ())
+  else Fino ()
+
+
+devuSkribiDosierojnElFluojnProgramo :: Babili -> ([(Titolo, Teksto)] -> Fluojn -> RSSalRetposxtoProgramo ()) -> [(Titolo, Teksto)] -> Fluojn -> RSSalRetposxtoProgramo ()
+devuSkribiDosierojnElFluojnProgramo babilu sekvo dokumentoj fluojn =
+  SkribiDosierojn babilu dokumentoj (sekvo dokumentoj fluojn)
+
+majluDokumentojnElFluojnProgramo :: Maybe Retadreso -> Babili -> PorLegilo -> Bool -> (Fluojn -> Farita -> RSSalRetposxtoProgramo ()) -> [(Titolo, Teksto)] -> Fluojn -> RSSalRetposxtoProgramo ()
+majluDokumentojnElFluojnProgramo mbRetadreso babilu porLegilo deviguSkribiFluojn sekvo dokumentoj fluojn =
+  case mbRetadreso of
+    Just retadreso -> ElsendiMajlon retadreso babilu porLegilo dokumentoj (sekvo fluojn)
+    Nothing        -> sekvo fluojn deviguSkribiFluojn
+
+skribuFluojnProgramo :: Babili -> Fluojn -> Farita -> RSSalRetposxtoProgramo ()
+skribuFluojnProgramo babilu fluojn farita =
+  if farita then SkribiFluojn fluojn babilu (Fino ())
+  else Fino ()
+
+
+main :: IO ()
+main = do
+    prgNomo <- getProgName
+    (args, ligiloj) <- getArgs >>= parse prgNomo
+
+    interpreti (HavigiParametrojn args ligiloj havigiParametrojnProgramo)
+
+
+
+
+
 
 
 

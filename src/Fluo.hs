@@ -49,7 +49,14 @@ filtriMedium servo h1 (x:xs) =
     case (x, h1) of
         (TagOpen "h1" _, False) -> filtriMedium servo True xs
         (TagClose "h1", _) -> filtriMedium servo False xs
-        (TagOpen "a" atributoj, True) -> (servo ++ (sercxiAtributon "href" atributoj)) : filtriMedium servo False xs
+        (TagOpen "a" atributoj, True) ->
+          let
+            href = sercxiAtributon "href" atributoj
+          in
+            if L.isPrefixOf servo href then
+              href : filtriMedium servo False xs
+            else
+              (servo ++ href) : filtriMedium servo False xs
         _ -> filtriMedium servo h1 xs
 
 filtriBlogon :: String -> String -> [Token] -> [String]
