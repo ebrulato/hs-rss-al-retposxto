@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+--{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main where
 
@@ -89,7 +90,7 @@ data RSSalRetposxtoProgramo a
   = HavigiParametrojn [Flag] [Ligilo] (Babili -> Maybe Retadreso -> PorLegilo -> BildLargxo -> Int -> FariDosiero -> FluaDemando -> DosierejoDemando -> [Ligilo] -> RSSalRetposxtoProgramo a)
   | AldoniFluojn [Ligilo] Babili (RSSalRetposxtoProgramo a)
   | LegiFluojn Babili PorLegilo BildLargxo ([(Titolo, Teksto)] -> Fluojn -> RSSalRetposxtoProgramo a)
-  | LegiFluojnElLigilojn [Ligilo] Babili PorLegilo BildLargxo ([(Titolo, Teksto)] -> RSSalRetposxtoProgramo a)
+  | LegiFluojnElLigiloj [Ligilo] Babili PorLegilo BildLargxo ([(Titolo, Teksto)] -> RSSalRetposxtoProgramo a)
   | LegiFluojnElDosierejo Babili Int ([(Titolo, Teksto)] -> RSSalRetposxtoProgramo a)
   | ElsendiMajlon Retadreso Babili PorLegilo [(Titolo, Teksto)] (Farita -> RSSalRetposxtoProgramo a)
   | AfisxiDosierojn Babili [(Titolo, Teksto)] (RSSalRetposxtoProgramo a)
@@ -135,7 +136,7 @@ interpreti (LegiFluojn babilu porLegilo bildLargxo sekvo) = do
   dokumentoj <- simpligiRetpagxojn babilu porLegilo bildLargxo retpagxojn
   interpreti (sekvo dokumentoj novajFluoj)
 
-interpreti (LegiFluojnElLigilojn ligilojn babilu porLegilo bildLargxo sekvo) = do
+interpreti (LegiFluojnElLigiloj ligilojn babilu porLegilo bildLargxo sekvo) = do
   dokumentoj <- simpligiRetpagxojn babilu porLegilo bildLargxo ligilojn
   interpreti (sekvo dokumentoj)
 
@@ -284,59 +285,95 @@ sercxiRetposxto = do
           return $ Nothing
 
 
+
+kajTiam :: RSSalRetposxtoProgramo a -> (a -> RSSalRetposxtoProgramo b) -> RSSalRetposxtoProgramo b
+
+kajTiam (HavigiParametrojn flagoj ligiloj sekvo) fariProgramo = HavigiParametrojn flagoj ligiloj (\babilu mbRetadreso porLegilo bildLargxo kvantoDeDosiero faruDosiero fluaDemando dosierejoDemando ligiloj -> kajTiam (sekvo babilu mbRetadreso porLegilo bildLargxo kvantoDeDosiero faruDosiero fluaDemando dosierejoDemando ligiloj) fariProgramo)
+kajTiam (AldoniFluojn ligiloj babilu sekvo) fariProgramo = AldoniFluojn ligiloj babilu (kajTiam sekvo fariProgramo)
+kajTiam (LegiFluojn babilu porLegilo bildLargxo sekvo) fariProgramo = LegiFluojn babilu porLegilo bildLargxo (\dokumentoj fluojn -> kajTiam (sekvo dokumentoj fluojn) fariProgramo)
+kajTiam (LegiFluojnElLigiloj ligiloj babilu porLegilo bildLargxo sekvo) fariProgramo = LegiFluojnElLigiloj ligiloj babilu porLegilo bildLargxo (\dokumentoj -> kajTiam (sekvo dokumentoj) fariProgramo)
+kajTiam (LegiFluojnElDosierejo babilu kvantoDeDosiero sekvo) fariProgramo = LegiFluojnElDosierejo babilu kvantoDeDosiero (\dokumentoj -> kajTiam (sekvo dokumentoj) fariProgramo)
+kajTiam (ElsendiMajlon retadreso babilu porLegilo dokumentoj sekvo) fariProgramo = ElsendiMajlon retadreso babilu porLegilo dokumentoj (\farita -> kajTiam (sekvo farita) fariProgramo)
+kajTiam (AfisxiDosierojn babilu dokumentoj sekvo) fariProgramo = AfisxiDosierojn babilu dokumentoj (kajTiam sekvo fariProgramo)
+kajTiam (SkribiDosierojn babilu dokumentoj sekvo) fariProgramo = SkribiDosierojn babilu dokumentoj (kajTiam sekvo fariProgramo)
+kajTiam (SkribiFluojn fluojn babilu sekvo) fariProgramo = SkribiFluojn fluojn babilu (kajTiam sekvo fariProgramo)
+kajTiam (MalAperigiDosierojn titoloj babilu sekvo) fariProgramo = MalAperigiDosierojn titoloj babilu (kajTiam sekvo fariProgramo)
+kajTiam (NeParametron respondo) fariProgramo = fariProgramo respondo
+kajTiam (Fino respondo) fariProgramo = fariProgramo respondo
+
+
 havigiParametrojnProgramo :: Babili -> Maybe Retadreso -> PorLegilo -> BildLargxo -> Int -> FariDosiero -> FluaDemando -> DosierejoDemando -> [Ligilo] -> RSSalRetposxtoProgramo ()
 havigiParametrojnProgramo babilu mbRetadreso porLegilo bildLargxo kvantoDeDosiero faruDosiero fluaDemando dosierejoDemando ligiloj =
   case (null ligiloj, fluaDemando, dosierejoDemando) of
     (True, True, False) ->
       if faruDosiero then
-        LegiFluojn babilu porLegilo bildLargxo (devuSkribiDosierojnElFluojnProgramo babilu (majluDokumentojnElFluojnProgramo mbRetadreso babilu porLegilo True (skribuFluojnProgramo babilu)))
-      else LegiFluojn babilu porLegilo bildLargxo (majluDokumentojnElFluojnProgramo mbRetadreso babilu porLegilo False (skribuFluojnProgramo babilu))
-    (True, False, True) -> LegiFluojnElDosierejo babilu kvantoDeDosiero (majluDokumentojnProgramo mbRetadreso babilu porLegilo (malAperiguDosierojnProgramo babilu))
+        legiFluojn babilu porLegilo bildLargxo
+        `kajTiam` skribiDosierojn babilu
+        `kajTiam` majliDokumentojn mbRetadreso babilu porLegilo
+        `kajTiam` skribiFluojn babilu
+      else
+        legiFluojn babilu porLegilo bildLargxo
+        `kajTiam` majliDokumentojn mbRetadreso babilu porLegilo
+        `kajTiam` skribiFluojn babilu
+    (True, False, True) ->
+      legiFluojnElDosierejo babilu kvantoDeDosiero
+      `kajTiam` majliDokumentojn mbRetadreso babilu porLegilo
+      `kajTiam` malAperigiDosierojn babilu
     (True, False, False) -> NeParametron ()
     (False, True, _) -> AldoniFluojn ligiloj babilu (Fino ())
     (False, False, _) ->
       if faruDosiero then
-        LegiFluojnElLigilojn ligiloj babilu porLegilo bildLargxo (devuSkribiDosierojnProgramo babilu (majluDokumentojnProgramo mbRetadreso babilu porLegilo (finiguProgramo babilu)))
-      else LegiFluojnElLigilojn ligiloj babilu porLegilo bildLargxo (devuAfisxiDosierojnProgramo babilu (majluDokumentojnProgramo mbRetadreso babilu porLegilo (finiguProgramo babilu)))
+        legiFluojnElLigiloj ligiloj babilu porLegilo bildLargxo
+        `kajTiam` skribiDosierojn babilu
+        `kajTiam` majliDokumentojn mbRetadreso babilu porLegilo
+        `kajTiam` finigiProgramo
+      else
+        legiFluojnElLigiloj ligiloj babilu porLegilo bildLargxo
+        `kajTiam` afisxiDosierojn babilu
+        `kajTiam` majliDokumentojn mbRetadreso babilu porLegilo
+        `kajTiam` finigiProgramo
     _ -> Fino ()
 
 
-devuSkribiDosierojnProgramo :: Babili -> ([(Titolo, Teksto)] -> RSSalRetposxtoProgramo ()) -> [(Titolo, Teksto)] -> RSSalRetposxtoProgramo ()
-devuSkribiDosierojnProgramo babilu sekvo dokumentoj =
-  SkribiDosierojn babilu dokumentoj (sekvo dokumentoj)
+legiFluojn :: Babili -> PorLegilo -> BildLargxo -> RSSalRetposxtoProgramo ([(Titolo, Teksto)], Maybe Fluojn)
+legiFluojn babilu porLegilo bildLargxo =
+  LegiFluojn babilu porLegilo bildLargxo (\dokumentoj fluojn -> Fino (dokumentoj, Just fluojn))
 
-devuAfisxiDosierojnProgramo :: Babili -> ([(Titolo, Teksto)] -> RSSalRetposxtoProgramo ()) -> [(Titolo, Teksto)] -> RSSalRetposxtoProgramo ()
-devuAfisxiDosierojnProgramo babilu sekvo dokumentoj =
-  AfisxiDosierojn babilu dokumentoj (sekvo dokumentoj)
+legiFluojnElDosierejo :: Babili -> Int -> RSSalRetposxtoProgramo ([(Titolo, Teksto)], Maybe Fluojn)
+legiFluojnElDosierejo babilu kvantoDeDosiero =
+  LegiFluojnElDosierejo babilu kvantoDeDosiero (\dokumentoj -> Fino (dokumentoj, Nothing))
 
-majluDokumentojnProgramo :: Maybe Retadreso -> Babili -> PorLegilo -> ([(Titolo, Teksto)] -> Farita -> RSSalRetposxtoProgramo ()) -> [(Titolo, Teksto)] -> RSSalRetposxtoProgramo ()
-majluDokumentojnProgramo mbRetadreso babilu porLegilo sekvo dokumentoj =
-  case mbRetadreso of
-    Just retadreso -> ElsendiMajlon retadreso babilu porLegilo dokumentoj (sekvo dokumentoj)
-    Nothing        -> sekvo dokumentoj False
+legiFluojnElLigiloj :: [Ligilo] -> Babili -> PorLegilo -> BildLargxo -> RSSalRetposxtoProgramo ([(Titolo, Teksto)], Maybe Fluojn)
+legiFluojnElLigiloj ligiloj babilu porLegilo bildLargxo =
+  LegiFluojnElLigiloj ligiloj babilu porLegilo bildLargxo (\dokumentoj -> Fino (dokumentoj, Nothing))
 
-finiguProgramo :: Babili -> [(Titolo, Teksto)] -> Farita -> RSSalRetposxtoProgramo ()
-finiguProgramo _ _ _ = Fino ()
+skribiDosierojn :: Babili -> ([(Titolo, Teksto)], Maybe Fluojn) -> RSSalRetposxtoProgramo ([(Titolo, Teksto)], Maybe Fluojn)
+skribiDosierojn babilu (dokumentoj, mbFluojn) =
+  SkribiDosierojn babilu dokumentoj (Fino (dokumentoj, mbFluojn))
 
-malAperiguDosierojnProgramo :: Babili -> [(Titolo, Teksto)] -> Farita -> RSSalRetposxtoProgramo ()
-malAperiguDosierojnProgramo babilu dokumentoj farita =
+majliDokumentojn :: Maybe Retadreso -> Babili -> PorLegilo -> ([(Titolo, Teksto)], Maybe Fluojn) -> RSSalRetposxtoProgramo ([(Titolo, Teksto)], Maybe Fluojn, Farita)
+majliDokumentojn mbRetadreso babilu porLegilo (dokumentoj, mbFluojn) =
+  case (mbRetadreso, mbFluojn) of
+    (Just retadreso, _) -> ElsendiMajlon retadreso babilu porLegilo dokumentoj (\farita -> Fino (dokumentoj, mbFluojn, farita))
+    (Nothing, Just fluojn)        -> Fino (dokumentoj, mbFluojn, True)
+    (Nothing, Nothing)        -> Fino (dokumentoj, mbFluojn, False)
+
+skribiFluojn :: Babili -> ([(Titolo, Teksto)], Maybe Fluojn, Farita) -> RSSalRetposxtoProgramo ()
+skribiFluojn babilu (dokumentoj, mbFluojn, farita) =
+  case (farita, mbFluojn) of
+    (True, Just fluojn) -> SkribiFluojn fluojn babilu (Fino ())
+    _                   -> Fino ()
+
+afisxiDosierojn :: Babili -> ([(Titolo, Teksto)], Maybe Fluojn) -> RSSalRetposxtoProgramo ([(Titolo, Teksto)], Maybe Fluojn)
+afisxiDosierojn babilu (dokumentoj, mbFluojn) =
+  AfisxiDosierojn babilu dokumentoj (Fino (dokumentoj, mbFluojn))
+
+finigiProgramo :: ([(Titolo, Teksto)], Maybe Fluojn, Farita) -> RSSalRetposxtoProgramo ()
+finigiProgramo _ = Fino ()
+
+malAperigiDosierojn :: Babili -> ([(Titolo, Teksto)], Maybe Fluojn, Farita) -> RSSalRetposxtoProgramo ()
+malAperigiDosierojn babilu (dokumentoj, _, farita) =
   if farita then MalAperigiDosierojn (map fst dokumentoj) babilu (Fino ())
-  else Fino ()
-
-
-devuSkribiDosierojnElFluojnProgramo :: Babili -> ([(Titolo, Teksto)] -> Fluojn -> RSSalRetposxtoProgramo ()) -> [(Titolo, Teksto)] -> Fluojn -> RSSalRetposxtoProgramo ()
-devuSkribiDosierojnElFluojnProgramo babilu sekvo dokumentoj fluojn =
-  SkribiDosierojn babilu dokumentoj (sekvo dokumentoj fluojn)
-
-majluDokumentojnElFluojnProgramo :: Maybe Retadreso -> Babili -> PorLegilo -> Bool -> (Fluojn -> Farita -> RSSalRetposxtoProgramo ()) -> [(Titolo, Teksto)] -> Fluojn -> RSSalRetposxtoProgramo ()
-majluDokumentojnElFluojnProgramo mbRetadreso babilu porLegilo deviguSkribiFluojn sekvo dokumentoj fluojn =
-  case mbRetadreso of
-    Just retadreso -> ElsendiMajlon retadreso babilu porLegilo dokumentoj (sekvo fluojn)
-    Nothing        -> sekvo fluojn deviguSkribiFluojn
-
-skribuFluojnProgramo :: Babili -> Fluojn -> Farita -> RSSalRetposxtoProgramo ()
-skribuFluojnProgramo babilu fluojn farita =
-  if farita then SkribiFluojn fluojn babilu (Fino ())
   else Fino ()
 
 
@@ -344,7 +381,6 @@ main :: IO ()
 main = do
     prgNomo <- getProgName
     (args, ligiloj) <- getArgs >>= parse prgNomo
-
     interpreti (HavigiParametrojn args ligiloj havigiParametrojnProgramo)
 
 

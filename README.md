@@ -31,7 +31,8 @@ Se vi volas vi povas inkluzivi la bildojn en la artikoloj kaj elsendi la majlojn
 ## kodplibonigoj
 
 - mi simpligis la uzadon de la parametroj « app/Main.hs »
-- mi rekodis la « app/Main.hs » kun la skemo komando 
+- mi rekodis la « app/Main.hs » kun la skemo komando
+- mi aldonis la « kajTiam » skemon por plibonigi la legadon de la funkcio « havigiParametrojnProgramo » en la dosiero « app/Main.hs »
 
 ## la bazoj de la projekto
 
