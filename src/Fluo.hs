@@ -6,9 +6,9 @@ module Fluo
 ) where
 
 import           Control.Lens
-import qualified Data.List               as L (isPrefixOf)
+import qualified Data.List               as L (isInfixOf, isPrefixOf, nub)
 import qualified Data.Text               as T (unpack)
-import qualified Data.Text.Lazy          as TL (Text)
+import qualified Data.Text.Lazy          as TL (Text, replace)
 import           Data.Text.Lazy.Encoding (decodeUtf8)
 import           Network.Wreq
 import           Text.HTML.Parser
@@ -20,19 +20,18 @@ import           Helpi
 ekstrakti :: String -> String -> TL.Text -> [String]
 ekstrakti servo fluo teksto =
     let
-        tokens = parseTokensLazy teksto
+        tokens = parseTokensLazy (TL.replace "<![CDATA[" "" (TL.replace "]]>" "" teksto))
         rezultoRSS2 = filtriRSS2 False False tokens
+        havasArtikolon = any (\n -> case n of
+                TagOpen "article" _ -> True
+                _                   -> False
+            ) tokens
     in
-        if null rezultoRSS2 then
-            let
-              rezultoMedium = filtriMedium servo False tokens
-            in
-              if null rezultoMedium then
-                filtriBlogon servo fluo tokens
-              else
-                rezultoMedium
-        else
-            rezultoRSS2
+    case (null rezultoRSS2, "medium.com" `L.isInfixOf` fluo) of
+      (True, True)  -> filtriMedium servo False tokens
+      (True, False) -> filtriBlogon servo fluo False havasArtikolon tokens
+      (False, _)    -> rezultoRSS2
+
 
 filtriRSS2 :: Bool -> Bool -> [Token] -> [String]
 filtriRSS2 item link [] = []
@@ -59,24 +58,40 @@ filtriMedium servo h1 (x:xs) =
               (servo ++ href) : filtriMedium servo False xs
         _ -> filtriMedium servo h1 xs
 
-filtriBlogon :: String -> String -> [Token] -> [String]
-filtriBlogon servo fluo [] = []
-filtriBlogon servo fluo (x:xs) =
-    case x of
-        (TagOpen "a" atributoj) ->
+filtriBlogon :: String -> String -> Bool -> Bool ->  [Token] -> [String]
+filtriBlogon servo fluo ignoru seArtiklo [] = []
+filtriBlogon servo fluo ignoru seArtiklo (x:xs) =
+    case (x, ignoru, seArtiklo) of
+        (TagOpen "head" _, _, _) -> filtriBlogon servo fluo True seArtiklo xs
+        (TagClose "head", _, False) -> filtriBlogon servo fluo False seArtiklo xs
+        (TagClose "head", _, True) -> filtriBlogon servo fluo True seArtiklo xs
+        (TagOpen "footer" _, _, _) -> filtriBlogon servo fluo True seArtiklo xs
+        (TagClose "footer", _, False) -> filtriBlogon servo fluo False seArtiklo xs
+        (TagClose "footer", _, True) -> filtriBlogon servo fluo True seArtiklo xs
+        (TagOpen "article" _, _, _) -> filtriBlogon servo fluo False seArtiklo xs
+        (TagClose "article", _, True) -> filtriBlogon servo fluo True seArtiklo xs
+        (TagOpen "a" atributoj, False, _) -> filtri atributoj
+        _ -> filtriBlogon servo fluo ignoru seArtiklo xs
+    where
+      filtri atributoj =
             let
                 href = sercxiAtributon "href" atributoj
             in
-            if (href == "") || (href == fluo) || (href == "/") || (href == servo) then
-               filtriBlogon servo fluo xs
-            else if L.isPrefixOf servo href then
-               href : (filtriBlogon servo fluo xs)
+            if L.isPrefixOf servo href then
+               href : (filtriBlogon servo fluo False seArtiklo xs)
             else
-              let
-                sep = if L.isPrefixOf "/" href then "" else "/"
-              in
-               (servo ++ sep ++ href) : (filtriBlogon servo fluo xs)
-        _ -> filtriBlogon servo fluo xs
+              if (href == "") || (href == "#") || (href == fluo)
+                 || (href == "/") || (href == servo)
+                 || (L.isPrefixOf "//" href)
+                 || (L.isPrefixOf "http" href)
+              then
+                filtriBlogon servo fluo False seArtiklo xs
+              else
+                let
+                  sep = if L.isPrefixOf "/" href then "" else "/"
+                in
+                  (servo ++ sep ++ href) : (filtriBlogon servo fluo False seArtiklo xs)
+
 
 sercxiAtributon nomo as = concat $ map (\(Attr atributaNomo valo) -> if T.unpack atributaNomo == nomo then (T.unpack valo) else "") as
 
@@ -87,7 +102,7 @@ legiFluon fluo babilu = do
             putStrLn servo
             r <- get fluo
             if r ^. responseStatus . statusCode == 200 then do
-                retpagxoj <- return $ ekstrakti servo fluo $ decodeUtf8 $  r ^. responseBody
+                retpagxoj <- return $ L.nub $ ekstrakti servo fluo $ decodeUtf8 $  r ^. responseBody
                 seSkribu babilu $ "La fluo \""++ fluo ++"\" havas "++ (show $ length retpagxoj) ++ " retpago(j)n."
                 return retpagxoj
             else do

@@ -252,13 +252,18 @@ simpligiRetpagxojn babilu porLegilo bildLargxo retpagxojn = do
 
 simpligiRetpagxon :: PorLegilo -> Babili -> BildLargxo -> Ligilo -> IO (Maybe (Titolo, Teksto))
 simpligiRetpagxon porLegilo babilu bildLargxo retpagxo = do
-    retpagxoSimpligita <- S.simpligiRetpagxon retpagxo porLegilo bildLargxo babilu
-    case retpagxoSimpligita of
-        Left mesagxo -> do
-            putStrLn mesagxo
+    rezulto <- try $ S.simpligiRetpagxon retpagxo porLegilo bildLargxo babilu
+    case (rezulto :: (Either SomeException (Either String (Text, Text)))) of
+        Right retpagxoSimpligita ->
+          case retpagxoSimpligita of
+            Left mesagxo -> do
+              putStrLn mesagxo
+              return $ Nothing
+            Right (titolo, teksto) -> do
+              return $ Just (titolo, teksto)
+        Left eraro  -> do
+            putStrLn $ show eraro
             return $ Nothing
-        Right (titolo, teksto) -> do
-            return $ Just (titolo, teksto)
 
 sercxiDosieron :: FilePath -> IO (Titolo, Teksto)
 sercxiDosieron fp = do
@@ -318,9 +323,8 @@ havigiParametrojn babilu mbRetadreso porLegilo bildLargxo kvantoDeDosiero faruDo
       if faruDosiero then do
         (dokumentoj, fluojn) <- legiFluojn babilu porLegilo bildLargxo
         skribiDosierojn babilu dokumentoj
-        farita <- majliDokumentojn mbRetadreso babilu porLegilo dokumentoj
-        if farita then skribiFluojn babilu fluojn
-        else finigiProgramon
+        majliDokumentojn mbRetadreso babilu porLegilo dokumentoj
+        skribiFluojn babilu fluojn
       else do
         (dokumentoj, fluojn) <- legiFluojn babilu porLegilo bildLargxo
         farita <- majliDokumentojn mbRetadreso babilu porLegilo dokumentoj

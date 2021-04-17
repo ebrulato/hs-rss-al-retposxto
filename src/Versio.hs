@@ -1,3 +1,3 @@
 module Versio (versio) where
 
-versio = "0.1.4.0"
+versio = "0.1.4.1"

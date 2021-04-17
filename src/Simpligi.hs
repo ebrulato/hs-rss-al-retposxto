@@ -267,17 +267,17 @@ simpligiRetpagxon :: String -> Bool -> Int -> Bool -> IO (Either String (Text, T
 simpligiRetpagxon retpagxo porLegilo largxo babilu = do
     case (ekstraktiServon retpagxo, ekstraktiVojon retpagxo) of
         (Just servo, Just vojo) -> do
-            r <- get $ servo ++ "/" ++ vojo
-            if r ^. responseStatus . statusCode == 200 then do
-                (titolo, teksto, havasTabulon) <- ekstrakti porLegilo largxo servo (pack $ "<a href="++retpagxo++">fonto</a>") $ decodeUtf8 $ B.concat . BL.toChunks $ r ^. responseBody
-                if porLegilo then do
-                    if babilu then putStrLn $ "ekstraktis por legilo la ligilo: " ++ retpagxo else return ()
-                    return $ Right (titolo,  append (append (pack $ "<html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">"++(tabulon havasTabulon)++"</head><body>") teksto) (pack $ "</body></html>"))
-                else do
-                    if babilu then putStrLn $ "ekstraktis la ligilo: " ++ retpagxo else return ()
-                    return $ Right (titolo, teksto)
-            else
-                return $ Left $ "La retpagxo ne legeblas : responsa kodo = " ++ (show $ r ^. responseStatus . statusCode)
+          r <- get $ servo ++ "/" ++ vojo
+          if r ^. responseStatus . statusCode == 200 then do
+            (titolo, teksto, havasTabulon) <- ekstrakti porLegilo largxo servo (pack $ "<a href="++retpagxo++">fonto</a>") $ decodeUtf8 $ B.concat . BL.toChunks $ r ^. responseBody
+            if porLegilo then do
+              if babilu then putStrLn $ "ekstraktis por legilo la ligilo: " ++ retpagxo else return ()
+              return $ Right (titolo,  append (append (pack $ "<html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">"++(tabulon havasTabulon)++"</head><body>") teksto) (pack $ "</body></html>"))
+            else do
+              if babilu then putStrLn $ "ekstraktis la ligilo: " ++ retpagxo else return ()
+              return $ Right (titolo, teksto)
+          else
+            return $ Left $ "La retpagxo ne legeblas : responsa kodo = " ++ (show $ r ^. responseStatus . statusCode)
         (Nothing, _) -> return $ Left $ "La retpagxo ne havas gxustan servon : " ++ retpagxo
     where
         tabulon havasTabulon = if havasTabulon then
